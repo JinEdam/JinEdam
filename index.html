@@ -379,10 +379,35 @@
       opacity: 0; visibility: hidden; transition: opacity 0.35s var(--ease), visibility 0.35s var(--ease);
     }
     .lightbox.open { opacity: 1; visibility: visible; }
-    .lightbox-inner { max-width: 620px; width: 100%; aspect-ratio: 3 / 4; border: 1px solid var(--border-strong); border-radius: 4px; overflow: hidden; transform: scale(0.96); transition: transform 0.35s var(--ease); }
+    .lightbox-inner { max-width: 90vw; max-height: 86vh; margin: 0; transform: scale(0.96); transition: transform 0.35s var(--ease); display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .lightbox-inner img { max-width: 90vw; max-height: 78vh; width: auto; height: auto; border: 1px solid var(--border-strong); border-radius: 4px; display: block; }
+    .lightbox-inner figcaption { color: var(--ink-soft); font-size: 0.86rem; letter-spacing: 0.02em; text-align: center; }
+    .lightbox-inner figcaption:empty { display: none; }
     .lightbox.open .lightbox-inner { transform: scale(1); }
     .lightbox-close { position: absolute; top: 26px; right: 30px; background: none; border: none; cursor: pointer; color: #d8d2c7; font-size: 2rem; line-height: 1; transition: color 0.25s var(--ease), transform 0.25s var(--ease); }
     .lightbox-close:hover { color: var(--gold); transform: rotate(90deg); }
+
+    /* ===================== 동적 콘텐츠 (Stage 6) ===================== */
+    .hero-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .photo-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .photo-tab { background: transparent; border: 1px solid var(--border); border-radius: 100px; color: var(--ink-mute); font-size: 0.84rem; letter-spacing: 0.02em; padding: 8px 18px; cursor: pointer; transition: border-color 0.25s var(--ease), color 0.25s var(--ease), background 0.25s var(--ease); }
+    .photo-tab:hover { color: var(--ink-soft); }
+    .photo-tab.active { border-color: var(--gold); color: var(--gold); background: rgba(201,162,92,0.06); }
+
+    .masonry { columns: 3 280px; column-gap: 16px; margin-top: 40px; }
+    .masonry-item { break-inside: avoid; margin: 0 0 16px; border: 1px solid var(--border); border-radius: 4px; overflow: hidden; background: var(--surface); cursor: pointer; }
+    .masonry-item img { width: 100%; display: block; transition: opacity 0.6s var(--ease); }
+    .masonry-item .m-cap { padding: 10px 13px; font-size: 0.82rem; color: var(--ink-soft); letter-spacing: 0.02em; }
+
+    .post { border-top: 1px solid var(--border); padding: 30px 0; }
+    .post:first-child { border-top: none; padding-top: 8px; }
+    .post-cover { width: 100%; max-height: 380px; object-fit: cover; border-radius: 4px; margin-bottom: 20px; }
+    .post-title { font-family: var(--serif-ko); font-weight: 400; font-size: clamp(1.3rem, 2.6vw, 1.7rem); color: var(--ink); line-height: 1.35; }
+    .post-date { color: var(--ink-mute); font-size: 0.82rem; margin-top: 7px; letter-spacing: 0.03em; }
+    .post-body { color: var(--ink-soft); margin-top: 16px; white-space: pre-wrap; line-height: 1.9; font-size: 1.02rem; }
+
+    .empty-note { color: var(--ink-mute); font-size: 0.92rem; text-align: center; padding: 36px 0; margin-top: 20px; }
 
     /* ============================================================
        반응형
@@ -446,8 +471,7 @@
     <section class="hero" id="home">
       <div class="wrap">
         <div class="hero-grid">
-          <div class="hero-portrait anim d2">
-            <!-- 프로필 사진 자리: 아래 div를 <img src="사진주소" alt="홍길동 프로필">로 교체 -->
+          <div class="hero-portrait anim d2" id="heroPortrait">
             <div class="photo-ph">
               <svg viewBox="0 0 24 24" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.5-3.5a2 2 0 0 0-2.8 0L5 21"/></svg>
               <span>프로필 사진</span>
@@ -455,16 +479,9 @@
           </div>
           <div class="hero-text">
             <span class="eyebrow hero-eyebrow anim d1">Actor · Profile</span>
-            <h1 class="hero-name anim d2">홍길동</h1>
-            <p class="hero-roman anim d3">HONG GIL-DONG</p>
-            <div class="hero-facts anim d4">
-              <div class="fact-row"><span class="fact-label">생년월일</span><span class="fact-val">2000. 00. 00</span></div>
-              <div class="fact-row"><span class="fact-label">신체</span><span class="fact-val">000 cm · 00 kg</span></div>
-              <div class="fact-row"><span class="fact-label">특기</span><span class="fact-val">노래, 무술, 외국어 등</span></div>
-              <div class="fact-row"><span class="fact-label">거주지</span><span class="fact-val">서울</span></div>
-              <div class="fact-row"><span class="fact-label">연락처</span><span class="fact-val"><a href="tel:01000000000">010-0000-0000</a></span></div>
-              <div class="fact-row"><span class="fact-label">이메일</span><span class="fact-val"><a href="mailto:your@email.com">your@email.com</a></span></div>
-            </div>
+            <h1 class="hero-name anim d2" id="heroName">홍길동</h1>
+            <p class="hero-roman anim d3" id="heroRoman">HONG GIL-DONG</p>
+            <div class="hero-facts anim d4" id="heroFacts"></div>
             <a href="#works" class="hero-cta anim d5">출연작 보기 <span class="arrow">→</span></a>
           </div>
         </div>
@@ -480,36 +497,7 @@
       <div class="wrap">
         <span class="eyebrow reveal">Filmography</span>
         <h2 class="section-title reveal">출연작</h2>
-
-        <div class="work-group reveal">
-          <h3 class="work-cat">드라마 <span class="en">Drama</span></h3>
-          <div class="work-list">
-            <div class="work-row"><span class="yr">2025</span><span class="ttl">작품명 <span class="role">역할명</span></span></div>
-            <div class="work-row"><span class="yr">2024</span><span class="ttl">작품명 <span class="role">역할명</span></span></div>
-          </div>
-        </div>
-
-        <div class="work-group reveal">
-          <h3 class="work-cat">영화 <span class="en">Film</span></h3>
-          <div class="work-list">
-            <div class="work-row"><span class="yr">2024</span><span class="ttl">작품명 <span class="role">역할명</span></span></div>
-            <div class="work-row"><span class="yr">2023</span><span class="ttl">단편 영화 제목 <span class="role">역할명</span></span></div>
-          </div>
-        </div>
-
-        <div class="work-group reveal">
-          <h3 class="work-cat">연극 · 뮤지컬 <span class="en">Stage</span></h3>
-          <div class="work-list">
-            <div class="work-row"><span class="yr">2023</span><span class="ttl">공연명 <span class="role">배역</span></span></div>
-          </div>
-        </div>
-
-        <div class="work-group reveal">
-          <h3 class="work-cat">광고 · 기타 <span class="en">Commercial</span></h3>
-          <div class="work-list">
-            <div class="work-row"><span class="yr">2024</span><span class="ttl">브랜드명 광고</span></div>
-          </div>
-        </div>
+        <div id="worksContainer"></div>
       </div>
     </section>
 
@@ -521,17 +509,13 @@
             <span class="eyebrow">Gallery</span>
             <h2 class="section-title">사진</h2>
           </div>
-          <p class="note reveal">활동 사진과 화보. 사진을 클릭하면 크게 볼 수 있습니다.</p>
+          <div class="photo-tabs reveal" id="photoTabs">
+            <button class="photo-tab active" type="button" data-cat="profile">프로필</button>
+            <button class="photo-tab" type="button" data-cat="still">스틸컷</button>
+            <button class="photo-tab" type="button" data-cat="daily">현재모습</button>
+          </div>
         </div>
-        <!-- 각 .gallery-item 안의 .photo-ph 를 <img>로 교체하면 됩니다 -->
-        <div class="gallery-grid" id="galleryGrid">
-          <figure class="gallery-item tall" data-caption="작품 · 제목 (2025)"><div class="photo-ph"><span>사진 01</span></div><figcaption class="cap">작품 · 제목 (2025)</figcaption></figure>
-          <figure class="gallery-item" data-caption="화보 · 촬영"><div class="photo-ph"><span>사진 02</span></div><figcaption class="cap">화보 · 촬영</figcaption></figure>
-          <figure class="gallery-item" data-caption="무대 · 공연"><div class="photo-ph"><span>사진 03</span></div><figcaption class="cap">무대 · 공연</figcaption></figure>
-          <figure class="gallery-item" data-caption="현장 스틸"><div class="photo-ph"><span>사진 04</span></div><figcaption class="cap">현장 스틸</figcaption></figure>
-          <figure class="gallery-item tall" data-caption="프로필 컷"><div class="photo-ph"><span>사진 05</span></div><figcaption class="cap">프로필 컷</figcaption></figure>
-          <figure class="gallery-item" data-caption="비하인드"><div class="photo-ph"><span>사진 06</span></div><figcaption class="cap">비하인드</figcaption></figure>
-        </div>
+        <div class="masonry" id="galleryMasonry"></div>
       </div>
     </section>
 
@@ -540,27 +524,7 @@
       <div class="wrap">
         <span class="eyebrow reveal">Film</span>
         <h2 class="section-title reveal">영상</h2>
-        <div class="video-grid">
-          <!--
-            실제 영상 연결: 아래 <div class="video-ph">...</div> 를 다음으로 교체
-            <iframe src="https://www.youtube.com/embed/영상ID" title="제목" allowfullscreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    referrerpolicy="strict-origin-when-cross-origin"></iframe>
-            (영상ID = youtu.be/뒤 또는 watch?v= 뒤의 11자리)
-          -->
-          <article class="video-card reveal">
-            <div class="embed"><div class="video-ph"><span class="play-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span style="font-size:0.82rem;letter-spacing:0.06em;">영상 자리</span></div></div>
-            <div class="video-meta"><h3>작품명 / 역할</h3><p>2025 · 단편 영화</p></div>
-          </article>
-          <article class="video-card reveal">
-            <div class="embed"><div class="video-ph"><span class="play-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span style="font-size:0.82rem;letter-spacing:0.06em;">영상 자리</span></div></div>
-            <div class="video-meta"><h3>작품명 / 역할</h3><p>2024 · 뮤직비디오</p></div>
-          </article>
-          <article class="video-card reveal">
-            <div class="embed"><div class="video-ph"><span class="play-btn"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></span><span style="font-size:0.82rem;letter-spacing:0.06em;">영상 자리</span></div></div>
-            <div class="video-meta"><h3>연기 릴 / Showreel</h3><p>2024 · 데모 릴</p></div>
-          </article>
-        </div>
+        <div class="video-grid" id="videosContainer"></div>
       </div>
     </section>
 
@@ -569,10 +533,7 @@
       <div class="wrap">
         <span class="eyebrow reveal">Journal</span>
         <h2 class="section-title reveal">소식</h2>
-        <div class="journal-empty reveal">
-          <span class="badge">준비 중</span>
-          <p>공연 소식과 근황을 전하는 게시글 공간입니다. 추후 Supabase 데이터베이스와 연결해 직접 글을 올릴 수 있게 만들 예정입니다.</p>
-        </div>
+        <div id="journalContainer"></div>
       </div>
     </section>
 
@@ -582,11 +543,11 @@
         <span class="eyebrow reveal" style="display:flex;justify-content:center;">Contact</span>
         <h2 class="section-title reveal">연락처</h2>
         <p class="lead reveal">캐스팅 및 협업 문의는 아래로 연락주세요.</p>
-        <div class="contact-links reveal">
-          <a href="mailto:your@email.com">✉ 이메일</a>
-          <a href="tel:01000000000">전화</a>
-          <a href="https://instagram.com/" target="_blank" rel="noopener noreferrer">Instagram</a>
-          <a href="https://youtube.com/" target="_blank" rel="noopener noreferrer">YouTube</a>
+        <div class="contact-links reveal" id="contactLinks">
+          <a href="mailto:your@email.com" id="contactEmail">✉ 이메일</a>
+          <a href="tel:01000000000" id="contactPhone">전화</a>
+          <a href="https://instagram.com/" target="_blank" rel="noopener noreferrer" id="contactInstagram">Instagram</a>
+          <a href="https://youtube.com/" target="_blank" rel="noopener noreferrer" id="contactYoutube">YouTube</a>
         </div>
       </div>
     </section>
@@ -596,18 +557,20 @@
   <footer class="site-footer">
     <div class="wrap">
       <a href="#home" class="brand">홍길동<span class="dot">.</span></a>
-      <div>© <span id="year"></span> 홍길동. All rights reserved.</div>
+      <div>© <span id="year"></span> <span id="footerName">홍길동</span>. All rights reserved.</div>
     </div>
   </footer>
 
   <!-- ===================== 라이트박스 ===================== -->
   <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="사진 확대 보기">
     <button class="lightbox-close" id="lightboxClose" aria-label="닫기">&times;</button>
-    <div class="lightbox-inner" id="lightboxInner">
-      <div class="photo-ph"><span id="lightboxCaption">사진</span></div>
-    </div>
+    <figure class="lightbox-inner" id="lightboxInner">
+      <img id="lightboxImg" alt="" />
+      <figcaption id="lightboxCaption"></figcaption>
+    </figure>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     (function () {
       "use strict";
@@ -692,14 +655,15 @@
       /* ---- 라이트박스 (사진 확대) ---- */
       var lightbox = document.getElementById("lightbox");
       var lightboxClose = document.getElementById("lightboxClose");
+      var lightboxImg = document.getElementById("lightboxImg");
       var lightboxCaption = document.getElementById("lightboxCaption");
-      var galleryGrid = document.getElementById("galleryGrid");
       var lastFocused = null;
 
-      function openLightbox(caption) {
+      function openLightbox(src, caption) {
         if (!lightbox) { return; }
         lastFocused = document.activeElement;
-        if (lightboxCaption) { lightboxCaption.textContent = caption || "사진"; }
+        if (lightboxImg) { lightboxImg.src = src || ""; lightboxImg.alt = caption || "사진"; }
+        if (lightboxCaption) { lightboxCaption.textContent = caption || ""; }
         lightbox.classList.add("open");
         document.body.style.overflow = "hidden";
         if (lightboxClose) { lightboxClose.focus(); }
@@ -708,14 +672,8 @@
         if (!lightbox) { return; }
         lightbox.classList.remove("open");
         document.body.style.overflow = "";
+        if (lightboxImg) { lightboxImg.src = ""; }
         if (lastFocused && typeof lastFocused.focus === "function") { lastFocused.focus(); }
-      }
-      if (galleryGrid) {
-        galleryGrid.addEventListener("click", function (e) {
-          var item = e.target.closest(".gallery-item");
-          if (!item || !galleryGrid.contains(item)) { return; }
-          openLightbox(item.getAttribute("data-caption"));
-        });
       }
       if (lightboxClose) { lightboxClose.addEventListener("click", closeLightbox); }
       if (lightbox) {
@@ -724,6 +682,243 @@
       document.addEventListener("keydown", function (e) {
         if (e.key === "Escape" && lightbox && lightbox.classList.contains("open")) { closeLightbox(); }
       });
+
+      /* ---- 동적 추가 요소의 등장 애니메이션 관찰 ---- */
+      function observeReveals(scope) {
+        var els = (scope || document).querySelectorAll(".reveal");
+        for (var i = 0; i < els.length; i++) {
+          if (els[i].classList.contains("in")) { continue; }
+          if (typeof io !== "undefined" && io) { io.observe(els[i]); }
+          else { els[i].classList.add("in"); }
+        }
+      }
+
+      /* ============================================================
+         Supabase 데이터 로딩 — 편집한 내용을 공개 페이지에 반영
+         ============================================================ */
+      var SUPABASE_URL = "https://zhqdcjfpsokiemyqnrms.supabase.co";
+      var SUPABASE_KEY = "sb_publishable_dhWj_gdxSNxJLh9AmSYauQ_lJogsak8";
+      var BUCKET = "portfolio";
+      var sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY) : null;
+
+      function photoUrl(path) { return SUPABASE_URL + "/storage/v1/object/public/" + BUCKET + "/" + path; }
+      function el(tag, cls, text) {
+        var e = document.createElement(tag);
+        if (cls) { e.className = cls; }
+        if (text !== undefined && text !== null) { e.textContent = text; }
+        return e;
+      }
+      function sortByOrder(a, b) {
+        var sa = a.sort_order || 0, sb2 = b.sort_order || 0;
+        if (sa !== sb2) { return sa - sb2; }
+        var ta = a.created_at || "", tb = b.created_at || "";
+        return ta < tb ? -1 : (ta > tb ? 1 : 0);
+      }
+
+      /* ----- 이름 / 브랜드 / 페이지 제목 ----- */
+      function setName(name) {
+        var nm = name || "포트폴리오";
+        var brands = document.querySelectorAll(".brand");
+        for (var i = 0; i < brands.length; i++) {
+          brands[i].textContent = "";
+          brands[i].appendChild(document.createTextNode(nm));
+          brands[i].appendChild(el("span", "dot", "."));
+        }
+        var fn = document.getElementById("footerName"); if (fn) { fn.textContent = nm; }
+        document.title = name ? (name + " · 배우 포트폴리오") : "배우 포트폴리오";
+      }
+
+      /* ----- 프로필 ----- */
+      function fmtDate(d) {
+        if (!d) { return ""; }
+        var p = String(d).split("-");
+        return (p.length === 3) ? (p[0] + ". " + p[1] + ". " + p[2]) : String(d);
+      }
+      function renderProfile(d) {
+        if (!d) { return; }
+        if (d.name_ko) { setName(d.name_ko); document.getElementById("heroName").textContent = d.name_ko; }
+        var roman = document.getElementById("heroRoman");
+        if (d.name_en) { roman.textContent = d.name_en; roman.style.display = ""; }
+        else { roman.style.display = "none"; }
+
+        var facts = document.getElementById("heroFacts");
+        facts.innerHTML = "";
+        function addFact(label, val) {
+          if (val === null) { return; }
+          var row = el("div", "fact-row");
+          row.appendChild(el("span", "fact-label", label));
+          var v = el("span", "fact-val");
+          if (typeof val === "string") { v.textContent = val; } else { v.appendChild(val); }
+          row.appendChild(v);
+          facts.appendChild(row);
+        }
+        if (d.birth_date) { addFact("생년월일", fmtDate(d.birth_date)); }
+        var bodyTxt = "";
+        if (d.height_cm) { bodyTxt += d.height_cm + " cm"; }
+        if (d.weight_kg) { bodyTxt += (bodyTxt ? " · " : "") + d.weight_kg + " kg"; }
+        if (bodyTxt) { addFact("신체", bodyTxt); }
+        if (d.specialties) { addFact("특기", d.specialties); }
+        if (d.residence) { addFact("거주지", d.residence); }
+        if (d.phone) { var a = el("a", null, d.phone); a.href = "tel:" + d.phone.replace(/[^0-9+]/g, ""); addFact("연락처", a); }
+        if (d.email) { var a2 = el("a", null, d.email); a2.href = "mailto:" + d.email; addFact("이메일", a2); }
+
+        function setLink(id, href, show) {
+          var node = document.getElementById(id);
+          if (!node) { return; }
+          if (show) { node.href = href; node.style.display = ""; } else { node.style.display = "none"; }
+        }
+        setLink("contactEmail", "mailto:" + (d.email || ""), !!d.email);
+        setLink("contactPhone", "tel:" + (d.phone ? d.phone.replace(/[^0-9+]/g, "") : ""), !!d.phone);
+        setLink("contactInstagram", d.instagram_url || "#", !!d.instagram_url);
+        setLink("contactYoutube", d.youtube_url || "#", !!d.youtube_url);
+      }
+
+      /* ----- 출연작 ----- */
+      var GENRE_EN = { "드라마": "Drama", "영화": "Film", "연극·뮤지컬": "Stage", "광고·기타": "Commercial" };
+      var GENRE_ORDER = ["드라마", "영화", "연극·뮤지컬", "광고·기타"];
+      function renderWorks(rows) {
+        var c = document.getElementById("worksContainer");
+        c.innerHTML = "";
+        if (!rows || !rows.length) { c.appendChild(el("div", "empty-note", "등록된 출연작이 없습니다.")); return; }
+        var used = {}; for (var g = 0; g < GENRE_ORDER.length; g++) { used[GENRE_ORDER[g]] = true; }
+        var groups = GENRE_ORDER.slice();
+        if (rows.some(function (r) { return !r.genre || !used[r.genre]; })) { groups.push("__기타__"); }
+        for (var k = 0; k < groups.length; k++) {
+          var label = groups[k];
+          var items = rows.filter(function (r) {
+            return label === "__기타__" ? (!r.genre || !used[r.genre]) : r.genre === label;
+          });
+          if (!items.length) { continue; }
+          items.sort(function (a, b) {
+            var ya = (a.year == null) ? -Infinity : a.year, yb = (b.year == null) ? -Infinity : b.year;
+            return yb - ya;
+          });
+          var grp = el("div", "work-group reveal");
+          var cat = el("h3", "work-cat");
+          cat.appendChild(document.createTextNode(label === "__기타__" ? "기타" : (label + " ")));
+          if (label !== "__기타__" && GENRE_EN[label]) { cat.appendChild(el("span", "en", GENRE_EN[label])); }
+          grp.appendChild(cat);
+          var list = el("div", "work-list");
+          for (var i = 0; i < items.length; i++) {
+            var it = items[i];
+            var row = el("div", "work-row");
+            row.appendChild(el("span", "yr", (it.year == null) ? "—" : String(it.year)));
+            var ttl = el("span", "ttl");
+            ttl.appendChild(document.createTextNode((it.title || "") + " "));
+            if (it.role) { ttl.appendChild(el("span", "role", it.role)); }
+            row.appendChild(ttl);
+            list.appendChild(row);
+          }
+          grp.appendChild(list);
+          c.appendChild(grp);
+        }
+        observeReveals(c);
+      }
+
+      /* ----- 사진 ----- */
+      var photosAll = { profile: [], still: [], daily: [] };
+      function renderHeroPhoto() {
+        var list = photosAll.profile;
+        if (!list.length) { return; }
+        var main = null;
+        for (var i = 0; i < list.length; i++) { if (list[i].is_main) { main = list[i]; break; } }
+        if (!main) { main = list[0]; }
+        var host = document.getElementById("heroPortrait");
+        host.innerHTML = "";
+        var img = el("img"); img.src = photoUrl(main.storage_path); img.alt = "프로필";
+        host.appendChild(img);
+      }
+      function renderMasonry(cat) {
+        var m = document.getElementById("galleryMasonry");
+        m.innerHTML = "";
+        var list = photosAll[cat] || [];
+        if (!list.length) { m.appendChild(el("div", "empty-note", "등록된 사진이 없습니다.")); return; }
+        for (var i = 0; i < list.length; i++) {
+          var p = list[i];
+          var src = photoUrl(p.storage_path);
+          var cap = (cat === "still" && p.caption) ? p.caption : "";
+          var item = el("div", "masonry-item");
+          var img = el("img"); img.src = src; img.loading = "lazy"; img.alt = cap || "사진";
+          item.appendChild(img);
+          if (cap) { item.appendChild(el("div", "m-cap", cap)); }
+          (function (s, c2) { item.addEventListener("click", function () { openLightbox(s, c2); }); })(src, cap);
+          m.appendChild(item);
+        }
+      }
+      function renderPhotos(rows) {
+        photosAll = { profile: [], still: [], daily: [] };
+        for (var i = 0; i < rows.length; i++) { if (photosAll[rows[i].category]) { photosAll[rows[i].category].push(rows[i]); } }
+        photosAll.profile.sort(sortByOrder);
+        photosAll.still.sort(sortByOrder);
+        photosAll.daily.sort(sortByOrder);
+        renderHeroPhoto();
+        renderMasonry("profile");
+        var tabs = document.getElementById("photoTabs");
+        tabs.addEventListener("click", function (e) {
+          var btn = e.target.closest(".photo-tab");
+          if (!btn || !tabs.contains(btn)) { return; }
+          var all = tabs.querySelectorAll(".photo-tab");
+          for (var j = 0; j < all.length; j++) { all[j].classList.remove("active"); }
+          btn.classList.add("active");
+          renderMasonry(btn.getAttribute("data-cat"));
+        });
+      }
+
+      /* ----- 영상 ----- */
+      function renderVideos(rows) {
+        var c = document.getElementById("videosContainer");
+        c.innerHTML = "";
+        if (!rows || !rows.length) { c.appendChild(el("div", "empty-note", "등록된 영상이 없습니다.")); return; }
+        rows.sort(sortByOrder);
+        for (var i = 0; i < rows.length; i++) {
+          var v = rows[i];
+          var card = el("article", "video-card reveal");
+          var embed = el("div", "embed");
+          var ifr = document.createElement("iframe");
+          ifr.src = "https://www.youtube.com/embed/" + v.youtube_id;
+          ifr.title = v.title || "영상";
+          ifr.loading = "lazy";
+          ifr.setAttribute("allowfullscreen", "");
+          ifr.setAttribute("allow", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture");
+          ifr.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+          embed.appendChild(ifr);
+          var meta = el("div", "video-meta");
+          meta.appendChild(el("h3", null, v.title || "영상"));
+          if (v.subtitle) { meta.appendChild(el("p", null, v.subtitle)); }
+          card.appendChild(embed); card.appendChild(meta);
+          c.appendChild(card);
+        }
+        observeReveals(c);
+      }
+
+      /* ----- 소식 ----- */
+      function renderJournal(rows) {
+        var c = document.getElementById("journalContainer");
+        c.innerHTML = "";
+        if (!rows || !rows.length) { c.appendChild(el("div", "empty-note", "아직 등록된 소식이 없습니다.")); return; }
+        for (var i = 0; i < rows.length; i++) {
+          var p = rows[i];
+          var post = el("article", "post reveal");
+          if (p.cover_path) {
+            var cov = el("img", "post-cover"); cov.src = photoUrl(p.cover_path); cov.loading = "lazy"; cov.alt = p.title || "";
+            post.appendChild(cov);
+          }
+          post.appendChild(el("h3", "post-title", p.title || "(제목 없음)"));
+          if (p.created_at) { post.appendChild(el("div", "post-date", new Date(p.created_at).toLocaleDateString("ko-KR"))); }
+          if (p.body) { post.appendChild(el("div", "post-body", p.body)); }
+          c.appendChild(post);
+        }
+        observeReveals(c);
+      }
+
+      /* ----- 로드 ----- */
+      if (sb) {
+        sb.from("profile").select("*").eq("id", 1).maybeSingle().then(function (r) { if (!r.error) { renderProfile(r.data); } });
+        sb.from("works").select("*").then(function (r) { if (!r.error) { renderWorks(r.data || []); } });
+        sb.from("photos").select("*").then(function (r) { if (!r.error) { renderPhotos(r.data || []); } });
+        sb.from("videos").select("*").then(function (r) { if (!r.error) { renderVideos(r.data || []); } });
+        sb.from("journal").select("*").order("created_at", { ascending: false }).then(function (r) { if (!r.error) { renderJournal(r.data || []); } });
+      }
     })();
   </script>
 </body>
