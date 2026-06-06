@@ -243,6 +243,17 @@
     .pending-rm { background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--ink-mute); font-size: 1rem; line-height: 1; padding: 6px 10px; cursor: pointer; flex: 0 0 auto; transition: border-color 0.2s var(--ease), color 0.2s var(--ease); }
     .pending-rm:hover { border-color: var(--err); color: var(--err); }
 
+    /* ===================== 영상 ===================== */
+    .vid-head, .vid-row, .vid-edit-row { display: grid; grid-template-columns: 1.5fr 1fr 1fr 34px; gap: 10px; align-items: center; }
+    .vid-edit-row { grid-template-columns: 1.5fr 1fr 1fr; padding: 10px 4px; border-bottom: 1px solid var(--border); background: rgba(201,162,92,0.06); border-radius: 6px; }
+    .vid-edit-row .wer-actions { grid-column: 1 / -1; display: flex; gap: 8px; margin-top: 8px; }
+    .video-item { display: flex; align-items: center; gap: 14px; padding: 12px 4px; border-bottom: 1px solid var(--border); }
+    .video-item .vi-thumb { width: 96px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; flex: 0 0 auto; background: var(--bg-2); }
+    .video-item .vi-main { flex: 1 1 auto; min-width: 0; }
+    .video-item .vi-title { color: var(--ink); font-size: 1rem; }
+    .video-item .vi-sub { color: var(--ink-mute); font-size: 0.84rem; margin-top: 2px; }
+    .video-item .vi-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+
     @media (max-width: 560px) {
       .grid-2 { grid-template-columns: 1fr; gap: 0; }
       .batch-head { display: none; }
@@ -253,6 +264,9 @@
       .photo-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
       .pending-row { flex-wrap: wrap; }
       .pending-meta { flex-basis: 100%; }
+      .vid-head { display: none; }
+      .vid-row, .vid-edit-row { grid-template-columns: 1fr 1fr; }
+      .vid-row .v-link, .vid-edit-row .v-link { grid-column: 1 / 3; }
     }
 
     @media (max-width: 560px) {
@@ -398,8 +412,24 @@
 
       <section class="panel" id="panel-videos">
         <h2>영상</h2>
-        <p class="lead">유튜브 링크를 붙여 넣으면 자동으로 영상이 연결됩니다.</p>
-        <div class="stub"><span class="badge">다음 단계</span><p>영상 편집은 Stage 5에서 구현됩니다.</p></div>
+        <p class="lead">유튜브 링크를 붙여넣으면 자동으로 영상이 연결됩니다. 제목·부제는 선택입니다. 항목을 누르면 수정·삭제할 수 있습니다.</p>
+
+        <form id="videoForm" class="work-form">
+          <div class="batch-head vid-head">
+            <span class="batch-col-label">유튜브 링크</span>
+            <span class="batch-col-label">제목 <span class="opt">(선택)</span></span>
+            <span class="batch-col-label">부제 <span class="opt">(선택)</span></span>
+            <span class="batch-col-label"></span>
+          </div>
+          <div class="batch-rows" id="videoBatchRows"></div>
+          <div class="batch-actions">
+            <button type="button" class="btn-ghost" id="addVideoRowBtn">+ 입력 줄 추가</button>
+            <button type="submit" class="btn-primary btn-inline" id="videoSaveBtn">일괄 추가</button>
+            <span class="save-msg" id="videoMsg"></span>
+          </div>
+        </form>
+
+        <div class="works-list" id="videosList"></div>
       </section>
 
       <section class="panel" id="panel-journal">
@@ -481,6 +511,17 @@
       var CAT_LABEL = { profile: "프로필", still: "스틸컷", daily: "현재모습" };
       var MAX_BYTES = 10 * 1024 * 1024;   // 사진 최대 10MB
 
+      /* 영상 요소 / 상태 */
+      var videoForm      = document.getElementById("videoForm");
+      var videoSaveBtn   = document.getElementById("videoSaveBtn");
+      var addVideoRowBtn = document.getElementById("addVideoRowBtn");
+      var videoMsg       = document.getElementById("videoMsg");
+      var videosList     = document.getElementById("videosList");
+      var videoBatchRows = document.getElementById("videoBatchRows");
+      var videosCache    = [];
+      var videosLoaded   = false;
+      var videoEditId    = null;
+
       /* ---- 로그인 에러 메시지 한글화 ---- */
       function krError(msg) {
         if (!msg) { return "로그인에 실패했습니다."; }
@@ -501,6 +542,8 @@
         worksLoaded = false;
         editId = null;
         photosLoaded = false;
+        videosLoaded = false;
+        videoEditId = null;
       }
       function showApp(session) {
         loginView.hidden = true;
@@ -1159,6 +1202,256 @@
       });
       uploadBtn.addEventListener("click", function () { batchUpload(); });
 
+      /* ============================================================
+         영상 (videos) — 일괄 추가 / 목록 / 인라인 수정·삭제
+         ============================================================ */
+      function extractYouTubeId(input) {
+        if (!input) { return null; }
+        var s = String(input).trim();
+        if (/^[A-Za-z0-9_-]{11}$/.test(s)) { return s; }   // 11자리 ID 직접 입력
+        var pats = [
+          /[?&]v=([A-Za-z0-9_-]{11})/,
+          /youtu\.be\/([A-Za-z0-9_-]{11})/,
+          /\/embed\/([A-Za-z0-9_-]{11})/,
+          /\/shorts\/([A-Za-z0-9_-]{11})/,
+          /\/v\/([A-Za-z0-9_-]{11})/
+        ];
+        for (var i = 0; i < pats.length; i++) {
+          var m = s.match(pats[i]);
+          if (m) { return m[1]; }
+        }
+        return null;
+      }
+      function ytThumb(id) { return "https://img.youtube.com/vi/" + id + "/mqdefault.jpg"; }
+
+      /* 입력 줄 1개 */
+      function makeVideoRow() {
+        var row = document.createElement("div");
+        row.className = "vid-row";
+        var link = document.createElement("input");
+        link.type = "text"; link.className = "v-link"; link.placeholder = "https://youtu.be/...";
+        var title = document.createElement("input");
+        title.type = "text"; title.className = "v-title"; title.placeholder = "제목";
+        var sub = document.createElement("input");
+        sub.type = "text"; sub.className = "v-sub"; sub.placeholder = "예: 2025 · 단편 영화";
+        var rm = document.createElement("button");
+        rm.type = "button"; rm.className = "entry-rm"; rm.textContent = "\u00d7";
+        rm.setAttribute("aria-label", "이 줄 삭제");
+        rm.addEventListener("click", function () { removeVideoRow(row); });
+        row.appendChild(link); row.appendChild(title); row.appendChild(sub); row.appendChild(rm);
+        return row;
+      }
+      function addVideoRow() { videoBatchRows.appendChild(makeVideoRow()); }
+      function removeVideoRow(row) {
+        var rows = videoBatchRows.querySelectorAll(".vid-row");
+        if (rows.length <= 1) {
+          row.querySelector(".v-link").value = "";
+          row.querySelector(".v-title").value = "";
+          row.querySelector(".v-sub").value = "";
+          return;
+        }
+        videoBatchRows.removeChild(row);
+      }
+      function resetVideoRows(count) {
+        videoBatchRows.innerHTML = "";
+        var n = count || 2;
+        for (var i = 0; i < n; i++) { addVideoRow(); }
+      }
+
+      function collectVideoEntries() {
+        var rows = videoBatchRows.querySelectorAll(".vid-row");
+        var entries = [], badLines = [];
+        for (var i = 0; i < rows.length; i++) {
+          var link = rows[i].querySelector(".v-link").value.trim();
+          var title = rows[i].querySelector(".v-title").value.trim();
+          var sub = rows[i].querySelector(".v-sub").value.trim();
+          if (!link && !title && !sub) { continue; }      // 빈 줄 건너뜀
+          var id = extractYouTubeId(link);
+          if (!id) { badLines.push(i + 1); continue; }     // 링크 없음/형식 오류
+          entries.push({ youtube_id: id, title: title || null, subtitle: sub || null });
+        }
+        return { entries: entries, badLines: badLines };
+      }
+
+      function batchAddVideos() {
+        var res = collectVideoEntries();
+        if (res.badLines.length) {
+          videoMsg.className = "save-msg err";
+          videoMsg.textContent = res.badLines.join(", ") + "번째 줄: 올바른 유튜브 링크가 필요합니다.";
+          return;
+        }
+        if (!res.entries.length) {
+          videoMsg.className = "save-msg err";
+          videoMsg.textContent = "추가할 유튜브 링크를 입력하세요.";
+          return;
+        }
+        videoSaveBtn.disabled = true;
+        videoMsg.className = "save-msg";
+        videoMsg.textContent = "추가 중…";
+        sb.from("videos").insert(res.entries).select().then(function (r) {
+          videoSaveBtn.disabled = false;
+          if (r.error) {
+            videoMsg.className = "save-msg err";
+            videoMsg.textContent = "추가 실패: " + r.error.message;
+            return;
+          }
+          if (!r.data || r.data.length === 0) {
+            videoMsg.className = "save-msg err";
+            videoMsg.textContent = "추가된 행이 없습니다. 로그인 상태와 RLS 정책을 확인하세요.";
+            return;
+          }
+          resetVideoRows();
+          videoMsg.className = "save-msg ok";
+          videoMsg.textContent = r.data.length + "개 추가됨 ✓";
+          loadVideos();
+        });
+      }
+
+      function loadVideos() {
+        videoMsg.className = "save-msg";
+        videoMsg.textContent = "불러오는 중…";
+        sb.from("videos").select("*").then(function (res) {
+          if (res.error) {
+            videoMsg.className = "save-msg err";
+            videoMsg.textContent = "불러오기 실패: " + res.error.message;
+            return;
+          }
+          videosCache = res.data || [];
+          videosLoaded = true;
+          videoMsg.className = "save-msg";
+          videoMsg.textContent = "";
+          renderVideos();
+        });
+      }
+      function sortVideos(a, b) {
+        var sa = a.sort_order || 0, sb2 = b.sort_order || 0;
+        if (sa !== sb2) { return sa - sb2; }
+        var ta = a.created_at || "", tb = b.created_at || "";
+        return ta < tb ? -1 : (ta > tb ? 1 : 0);
+      }
+
+      function makeVideoDisplay(item) {
+        var row = document.createElement("div");
+        row.className = "video-item";
+        var thumb = document.createElement("img");
+        thumb.className = "vi-thumb"; thumb.loading = "lazy"; thumb.alt = "";
+        thumb.src = ytThumb(item.youtube_id);
+        var main = document.createElement("div");
+        main.className = "vi-main";
+        var title = document.createElement("div");
+        title.className = "vi-title"; title.textContent = item.title || "(제목 없음)";
+        main.appendChild(title);
+        if (item.subtitle) {
+          var sub = document.createElement("div");
+          sub.className = "vi-sub"; sub.textContent = item.subtitle;
+          main.appendChild(sub);
+        }
+        var actions = document.createElement("div");
+        actions.className = "vi-actions";
+        var editBtn = document.createElement("button");
+        editBtn.type = "button"; editBtn.className = "wi-btn"; editBtn.textContent = "수정";
+        editBtn.addEventListener("click", function () { videoEditId = item.id; renderVideos(); });
+        var delBtn = document.createElement("button");
+        delBtn.type = "button"; delBtn.className = "wi-btn del"; delBtn.textContent = "삭제";
+        delBtn.addEventListener("click", function () { deleteVideo(item); });
+        actions.appendChild(editBtn); actions.appendChild(delBtn);
+        row.appendChild(thumb); row.appendChild(main); row.appendChild(actions);
+        return row;
+      }
+
+      function makeVideoEdit(item) {
+        var row = document.createElement("div");
+        row.className = "vid-edit-row";
+        var link = document.createElement("input");
+        link.type = "text"; link.className = "v-link"; link.placeholder = "https://youtu.be/...";
+        link.value = "https://youtu.be/" + item.youtube_id;
+        var title = document.createElement("input");
+        title.type = "text"; title.className = "v-title"; title.placeholder = "제목"; title.value = item.title || "";
+        var sub = document.createElement("input");
+        sub.type = "text"; sub.className = "v-sub"; sub.placeholder = "부제"; sub.value = item.subtitle || "";
+        var actions = document.createElement("div");
+        actions.className = "wer-actions";
+        var saveBtn = document.createElement("button");
+        saveBtn.type = "button"; saveBtn.className = "wi-btn"; saveBtn.textContent = "저장";
+        var cancelBtn = document.createElement("button");
+        cancelBtn.type = "button"; cancelBtn.className = "wi-btn"; cancelBtn.textContent = "취소";
+        cancelBtn.addEventListener("click", function () { videoEditId = null; renderVideos(); });
+        saveBtn.addEventListener("click", function () {
+          var id = extractYouTubeId(link.value);
+          if (!id) {
+            videoMsg.className = "save-msg err";
+            videoMsg.textContent = "올바른 유튜브 링크가 필요합니다.";
+            return;
+          }
+          var payload = { youtube_id: id, title: title.value.trim() || null, subtitle: sub.value.trim() || null };
+          saveBtn.disabled = true;
+          videoMsg.className = "save-msg";
+          videoMsg.textContent = "저장 중…";
+          sb.from("videos").update(payload).eq("id", item.id).select().then(function (r) {
+            saveBtn.disabled = false;
+            if (r.error) {
+              videoMsg.className = "save-msg err";
+              videoMsg.textContent = "저장 실패: " + r.error.message;
+              return;
+            }
+            if (!r.data || r.data.length === 0) {
+              videoMsg.className = "save-msg err";
+              videoMsg.textContent = "저장된 행이 없습니다. 로그인 상태와 RLS 정책을 확인하세요.";
+              return;
+            }
+            videoEditId = null;
+            videoMsg.className = "save-msg ok";
+            videoMsg.textContent = "수정됨 ✓";
+            loadVideos();
+          });
+        });
+        actions.appendChild(saveBtn); actions.appendChild(cancelBtn);
+        row.appendChild(link); row.appendChild(title); row.appendChild(sub); row.appendChild(actions);
+        return row;
+      }
+
+      function renderVideos() {
+        videosList.innerHTML = "";
+        if (!videosCache.length) {
+          var empty = document.createElement("div");
+          empty.className = "works-empty";
+          empty.textContent = "등록된 영상이 없습니다. 위에서 추가해 주세요.";
+          videosList.appendChild(empty);
+          return;
+        }
+        var items = videosCache.slice();
+        items.sort(sortVideos);
+        for (var i = 0; i < items.length; i++) {
+          videosList.appendChild(videoEditId === items[i].id ? makeVideoEdit(items[i]) : makeVideoDisplay(items[i]));
+        }
+      }
+
+      function deleteVideo(item) {
+        var name = item.title || "이 영상";
+        if (!window.confirm("'" + name + "'을(를) 삭제할까요? 되돌릴 수 없습니다.")) { return; }
+        videoMsg.className = "save-msg";
+        videoMsg.textContent = "삭제 중…";
+        sb.from("videos").delete().eq("id", item.id).then(function (res) {
+          if (res.error) {
+            videoMsg.className = "save-msg err";
+            videoMsg.textContent = "삭제 실패: " + res.error.message;
+            return;
+          }
+          if (videoEditId === item.id) { videoEditId = null; }
+          videoMsg.className = "save-msg ok";
+          videoMsg.textContent = "삭제됨 ✓";
+          loadVideos();
+        });
+      }
+
+      resetVideoRows();   // 시작 시 입력 줄 2개 준비
+
+      videoForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        batchAddVideos();
+      });
+      addVideoRowBtn.addEventListener("click", function () { addVideoRow(); });
+
 
 
       /* ---- 로그인 ---- */
@@ -1217,6 +1510,8 @@
         if (name === "works" && !worksLoaded) { loadWorks(); }
         // 사진 탭 최초 진입 시 목록 로드
         if (name === "photos" && !photosLoaded) { loadPhotos(); }
+        // 영상 탭 최초 진입 시 목록 로드
+        if (name === "videos" && !videosLoaded) { loadVideos(); }
       });
     })();
   </script>
