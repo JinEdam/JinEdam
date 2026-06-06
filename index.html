@@ -240,6 +240,10 @@
       font-size: clamp(1rem, 2.2vw, 1.4rem); color: var(--ink-mute); letter-spacing: 0.18em; margin-top: 14px;
     }
 
+    /* 한줄소개 */
+    .hero-intro { margin-top: 20px; max-width: 480px; color: var(--ink-soft); font-size: 1.05rem; line-height: 1.75; }
+    .hero-intro:empty { display: none; }
+
     /* 프로필 정보 리스트 */
     .hero-facts { margin-top: 30px; border-top: 1px solid var(--border); max-width: 480px; }
     .fact-row {
@@ -409,6 +413,18 @@
 
     .empty-note { color: var(--ink-mute); font-size: 0.92rem; text-align: center; padding: 36px 0; margin-top: 20px; }
 
+    /* 맨 위로 버튼 */
+    .to-top {
+      position: fixed; right: clamp(16px, 4vw, 36px); bottom: clamp(16px, 4vw, 36px);
+      width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--border-strong);
+      background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center;
+      opacity: 0; visibility: hidden; transform: translateY(10px); z-index: 900;
+      transition: opacity 0.3s var(--ease), transform 0.3s var(--ease), border-color 0.25s var(--ease), color 0.25s var(--ease);
+    }
+    .to-top.show { opacity: 1; visibility: visible; transform: none; }
+    .to-top:hover { border-color: var(--gold); color: var(--gold); }
+    .to-top svg { width: 20px; height: 20px; }
+
     /* ============================================================
        반응형
        ============================================================ */
@@ -481,6 +497,7 @@
             <span class="eyebrow hero-eyebrow anim d1">Actor · Profile</span>
             <h1 class="hero-name anim d2" id="heroName">홍길동</h1>
             <p class="hero-roman anim d3" id="heroRoman">HONG GIL-DONG</p>
+            <p class="hero-intro anim d4" id="heroIntro"></p>
             <div class="hero-facts anim d4" id="heroFacts"></div>
             <a href="#works" class="hero-cta anim d5">출연작 보기 <span class="arrow">→</span></a>
           </div>
@@ -561,6 +578,11 @@
     </div>
   </footer>
 
+  <!-- ===================== 맨 위로 ===================== -->
+  <button class="to-top" id="toTop" type="button" aria-label="맨 위로 이동">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+  </button>
+
   <!-- ===================== 라이트박스 ===================== -->
   <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="사진 확대 보기">
     <button class="lightbox-close" id="lightboxClose" aria-label="닫기">&times;</button>
@@ -605,15 +627,26 @@
         });
       }
 
-      /* ---- 헤더 스크롤 배경 ---- */
+      /* ---- 헤더 스크롤 배경 + 맨 위로 버튼 ---- */
       var header = document.getElementById("header");
+      var toTop = document.getElementById("toTop");
       function onScroll() {
-        if (!header) { return; }
-        if (window.scrollY > 24) { header.classList.add("scrolled"); }
-        else { header.classList.remove("scrolled"); }
+        if (header) {
+          if (window.scrollY > 24) { header.classList.add("scrolled"); }
+          else { header.classList.remove("scrolled"); }
+        }
+        if (toTop) {
+          if (window.scrollY > 600) { toTop.classList.add("show"); }
+          else { toTop.classList.remove("show"); }
+        }
       }
       window.addEventListener("scroll", onScroll, { passive: true });
       onScroll();
+      if (toTop) {
+        toTop.addEventListener("click", function () {
+          window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+        });
+      }
 
       /* ---- 모바일 메뉴 토글 ---- */
       var navToggle = document.getElementById("navToggle");
@@ -740,6 +773,9 @@
         var roman = document.getElementById("heroRoman");
         if (d.name_en) { roman.textContent = d.name_en; roman.style.display = ""; }
         else { roman.style.display = "none"; }
+
+        var intro = document.getElementById("heroIntro");
+        if (intro) { intro.textContent = d.intro || ""; }
 
         var facts = document.getElementById("heroFacts");
         facts.innerHTML = "";
