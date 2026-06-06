@@ -195,6 +195,37 @@
     .work-edit-row { padding: 10px 4px; border-bottom: 1px solid var(--border); background: rgba(201,162,92,0.06); border-radius: 6px; }
     .work-edit-row .wer-actions { display: flex; gap: 8px; grid-column: 1 / -1; margin-top: 8px; }
 
+    /* ===================== 사진 ===================== */
+    .subtabs { display: flex; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }
+    .subtab { background: transparent; border: 1px solid var(--border); border-radius: 100px; color: var(--ink-mute); font-size: 0.85rem; padding: 8px 18px; cursor: pointer; transition: border-color 0.2s var(--ease), color 0.2s var(--ease), background 0.2s var(--ease); }
+    .subtab:hover { color: var(--ink-soft); }
+    .subtab.active { border-color: var(--gold); color: var(--gold); background: rgba(201,162,92,0.06); }
+
+    .upload-box { border: 1px solid var(--border); border-radius: 8px; padding: 18px 20px; margin-bottom: 26px; display: flex; flex-direction: column; gap: 14px; }
+    .upload-field { display: flex; flex-direction: column; gap: 7px; }
+    .upload-field label { font-size: 0.78rem; color: var(--ink-soft); letter-spacing: 0.04em; }
+    .upload-field label .opt { color: var(--ink-mute); letter-spacing: 0; }
+    .upload-field select, .upload-field input[type="text"] {
+      width: 100%; background: var(--bg-2); border: 1px solid var(--border); border-radius: 5px;
+      color: var(--ink); font-family: inherit; font-size: 0.9rem; padding: 10px 12px; color-scheme: dark;
+      transition: border-color 0.25s var(--ease);
+    }
+    .upload-field select:focus, .upload-field input[type="text"]:focus { outline: none; border-color: var(--gold); }
+    .upload-field input[type="file"] { color: var(--ink-soft); font-size: 0.86rem; }
+    .upload-field input[type="file"]::file-selector-button {
+      background: var(--surface-2); color: var(--ink); border: 1px solid var(--border); border-radius: 5px;
+      padding: 8px 14px; margin-right: 12px; cursor: pointer; font-family: inherit; font-size: 0.84rem;
+    }
+
+    .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+    .photo-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
+    .photo-card .thumb { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; background: var(--bg-2); }
+    .photo-card .pc-foot { padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; }
+    .photo-card .pc-label { font-size: 0.76rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pc-del { background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--ink-mute); font-size: 0.74rem; padding: 4px 9px; cursor: pointer; flex: 0 0 auto; transition: border-color 0.2s var(--ease), color 0.2s var(--ease); }
+    .pc-del:hover { border-color: var(--err); color: var(--err); }
+    .photos-empty { grid-column: 1 / -1; color: var(--ink-mute); font-size: 0.9rem; text-align: center; padding: 30px 0; }
+
     @media (max-width: 560px) {
       .grid-2 { grid-template-columns: 1fr; gap: 0; }
       .batch-head { display: none; }
@@ -202,6 +233,7 @@
       .entry-row .e-title, .work-edit-row .e-title { grid-column: 1 / 3; }
       .entry-row .e-role, .work-edit-row .e-role { grid-column: 1 / 3; }
       .work-edit-row .wer-actions { grid-column: 1 / -1; }
+      .photo-grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); }
     }
 
     @media (max-width: 560px) {
@@ -321,8 +353,43 @@
 
       <section class="panel" id="panel-photos">
         <h2>사진</h2>
-        <p class="lead">프로필 사진과 일상 사진을 탭으로 나눠 업로드하고, 사진별 정보를 담게 됩니다.</p>
-        <div class="stub"><span class="badge">다음 단계</span><p>사진 업로드·편집은 Stage 4에서 구현됩니다.</p></div>
+        <p class="lead">프로필·스틸컷·현재모습 영역을 나눠 업로드합니다. 사진 크기·비율이 달라도 자동으로 정렬됩니다.</p>
+
+        <div class="subtabs" id="photoSubtabs">
+          <button class="subtab active" type="button" data-cat="profile">프로필</button>
+          <button class="subtab" type="button" data-cat="still">스틸컷</button>
+          <button class="subtab" type="button" data-cat="daily">현재모습</button>
+        </div>
+
+        <div class="upload-box">
+          <!-- 프로필 전용: 구분(클로즈업/웨이스트/전신/직접) -->
+          <div class="upload-field" id="upProfileField">
+            <label for="upSubtype">구분</label>
+            <select id="upSubtype">
+              <option value="클로즈업샷">클로즈업샷</option>
+              <option value="웨이스트샷">웨이스트샷</option>
+              <option value="전신샷">전신샷</option>
+              <option value="__custom__">직접 입력…</option>
+            </select>
+            <input type="text" id="upSubtypeCustom" placeholder="구분 직접 입력" hidden />
+          </div>
+          <!-- 스틸컷 전용: 설명(작품명 등, 선택) -->
+          <div class="upload-field" id="upStillField" hidden>
+            <label for="upCaption">설명 <span class="opt">(선택 · 비우면 사진만 노출)</span></label>
+            <input type="text" id="upCaption" placeholder="작품명 등" />
+          </div>
+          <!-- 공통: 파일 -->
+          <div class="upload-field">
+            <label for="upFile">사진 파일</label>
+            <input type="file" id="upFile" accept="image/*" />
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-primary btn-inline" id="uploadBtn">업로드</button>
+            <span class="save-msg" id="photoMsg"></span>
+          </div>
+        </div>
+
+        <div class="photo-grid" id="photoGrid"></div>
       </section>
 
       <section class="panel" id="panel-videos">
@@ -393,6 +460,24 @@
       var worksLoaded = false;
       var editId      = null;   // 인라인 수정 중인 항목 id
 
+      /* 사진 요소 / 상태 */
+      var BUCKET = "portfolio";
+      var photoSubtabs    = document.getElementById("photoSubtabs");
+      var upProfileField  = document.getElementById("upProfileField");
+      var upStillField    = document.getElementById("upStillField");
+      var upSubtype       = document.getElementById("upSubtype");
+      var upSubtypeCustom = document.getElementById("upSubtypeCustom");
+      var upCaption       = document.getElementById("upCaption");
+      var upFile          = document.getElementById("upFile");
+      var uploadBtn       = document.getElementById("uploadBtn");
+      var photoMsg        = document.getElementById("photoMsg");
+      var photoGrid       = document.getElementById("photoGrid");
+      var photosCache  = [];
+      var photosLoaded = false;
+      var activeCat    = "profile";
+      var CAT_LABEL = { profile: "프로필", still: "스틸컷", daily: "현재모습" };
+      var MAX_BYTES = 10 * 1024 * 1024;   // 사진 최대 10MB
+
       /* ---- 로그인 에러 메시지 한글화 ---- */
       function krError(msg) {
         if (!msg) { return "로그인에 실패했습니다."; }
@@ -412,6 +497,7 @@
         appShown = false;     // 로그아웃 시 초기화 → 다음 로그인 때 새로 불러옴
         worksLoaded = false;
         editId = null;
+        photosLoaded = false;
       }
       function showApp(session) {
         loginView.hidden = true;
@@ -785,6 +871,186 @@
       });
       addRowBtn.addEventListener("click", function () { addEntryRow(); });
 
+      /* ============================================================
+         사진 (photos) — 영역 전환 / 업로드 / 목록 / 삭제
+         ============================================================ */
+      function setActiveCat(cat) {
+        activeCat = cat;
+        var btns = photoSubtabs.querySelectorAll(".subtab");
+        for (var i = 0; i < btns.length; i++) {
+          btns[i].classList.toggle("active", btns[i].getAttribute("data-cat") === cat);
+        }
+        upProfileField.hidden = (cat !== "profile");
+        upStillField.hidden = (cat !== "still");
+        photoMsg.className = "save-msg";
+        photoMsg.textContent = "";
+        renderPhotos();
+      }
+
+      function publicUrl(path) {
+        var r = sb.storage.from(BUCKET).getPublicUrl(path);
+        return (r && r.data && r.data.publicUrl) ? r.data.publicUrl : "";
+      }
+
+      function loadPhotos() {
+        photoMsg.className = "save-msg";
+        photoMsg.textContent = "불러오는 중…";
+        sb.from("photos").select("*").then(function (res) {
+          if (res.error) {
+            photoMsg.className = "save-msg err";
+            photoMsg.textContent = "불러오기 실패: " + res.error.message;
+            return;
+          }
+          photosCache = res.data || [];
+          photosLoaded = true;
+          photoMsg.className = "save-msg";
+          photoMsg.textContent = "";
+          renderPhotos();
+        });
+      }
+
+      function sortPhotos(a, b) {
+        var sa = a.sort_order || 0, sb2 = b.sort_order || 0;
+        if (sa !== sb2) { return sa - sb2; }
+        var ta = a.created_at || "", tb = b.created_at || "";
+        return ta < tb ? -1 : (ta > tb ? 1 : 0);   // 오래된 것 먼저
+      }
+
+      function makePhotoCard(item) {
+        var card = document.createElement("div");
+        card.className = "photo-card";
+
+        var img = document.createElement("img");
+        img.className = "thumb";
+        img.loading = "lazy";
+        img.alt = item.subtype || item.caption || "사진";
+        img.src = publicUrl(item.storage_path);
+
+        var foot = document.createElement("div");
+        foot.className = "pc-foot";
+        var label = document.createElement("span");
+        label.className = "pc-label";
+        if (item.category === "profile") { label.textContent = item.subtype || "구분 없음"; }
+        else if (item.category === "still") { label.textContent = item.caption || ""; }
+        else { label.textContent = ""; }
+        var del = document.createElement("button");
+        del.type = "button"; del.className = "pc-del"; del.textContent = "삭제";
+        del.addEventListener("click", function () { deletePhoto(item); });
+        foot.appendChild(label);
+        foot.appendChild(del);
+
+        card.appendChild(img);
+        card.appendChild(foot);
+        return card;
+      }
+
+      function renderPhotos() {
+        photoGrid.innerHTML = "";
+        var items = photosCache.filter(function (p) { return p.category === activeCat; });
+        items.sort(sortPhotos);
+        if (!items.length) {
+          var empty = document.createElement("div");
+          empty.className = "photos-empty";
+          empty.textContent = CAT_LABEL[activeCat] + " 사진이 없습니다. 위에서 업로드해 주세요.";
+          photoGrid.appendChild(empty);
+          return;
+        }
+        for (var i = 0; i < items.length; i++) {
+          photoGrid.appendChild(makePhotoCard(items[i]));
+        }
+      }
+
+      function genUid() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") { return window.crypto.randomUUID(); }
+        return String(Date.now()) + "_" + Math.random().toString(36).slice(2);
+      }
+
+      function uploadPhoto() {
+        var file = upFile.files && upFile.files[0];
+        if (!file) { photoMsg.className = "save-msg err"; photoMsg.textContent = "사진 파일을 선택하세요."; return; }
+        if (file.type && file.type.indexOf("image/") !== 0) {
+          photoMsg.className = "save-msg err"; photoMsg.textContent = "이미지 파일만 업로드할 수 있습니다."; return;
+        }
+        if (file.size > MAX_BYTES) {
+          photoMsg.className = "save-msg err"; photoMsg.textContent = "10MB 이하 이미지만 업로드할 수 있습니다."; return;
+        }
+
+        // 영역별 메타데이터
+        var subtype = null, caption = null;
+        if (activeCat === "profile") {
+          subtype = (upSubtype.value === "__custom__") ? upSubtypeCustom.value.trim() : upSubtype.value;
+          if (!subtype) { photoMsg.className = "save-msg err"; photoMsg.textContent = "구분을 입력하세요."; return; }
+        } else if (activeCat === "still") {
+          caption = upCaption.value.trim() || null;
+        }
+
+        var ext = "";
+        var dot = file.name.lastIndexOf(".");
+        if (dot >= 0) { ext = file.name.slice(dot).toLowerCase(); }
+        var path = activeCat + "/" + genUid() + ext;
+
+        uploadBtn.disabled = true;
+        photoMsg.className = "save-msg";
+        photoMsg.textContent = "업로드 중…";
+
+        sb.storage.from(BUCKET).upload(path, file, { contentType: file.type || "application/octet-stream", upsert: false }).then(function (up) {
+          if (up.error) {
+            uploadBtn.disabled = false;
+            photoMsg.className = "save-msg err";
+            photoMsg.textContent = "업로드 실패: " + up.error.message;
+            return;
+          }
+          var row = { category: activeCat, storage_path: path, subtype: subtype, caption: caption };
+          sb.from("photos").insert(row).select().then(function (ins) {
+            uploadBtn.disabled = false;
+            if (ins.error || !ins.data || ins.data.length === 0) {
+              // DB 기록 실패 → 방금 올린 파일은 정리(고아 파일 방지)
+              sb.storage.from(BUCKET).remove([path]);
+              photoMsg.className = "save-msg err";
+              photoMsg.textContent = "저장 실패: " + (ins.error ? ins.error.message : "기록된 행이 없습니다. 로그인/RLS 확인");
+              return;
+            }
+            // 입력 초기화
+            upFile.value = "";
+            if (activeCat === "still") { upCaption.value = ""; }
+            photoMsg.className = "save-msg ok";
+            photoMsg.textContent = "업로드됨 ✓";
+            loadPhotos();
+          });
+        });
+      }
+
+      function deletePhoto(item) {
+        if (!window.confirm("이 사진을 삭제할까요? 되돌릴 수 없습니다.")) { return; }
+        photoMsg.className = "save-msg";
+        photoMsg.textContent = "삭제 중…";
+        sb.from("photos").delete().eq("id", item.id).then(function (res) {
+          if (res.error) {
+            photoMsg.className = "save-msg err";
+            photoMsg.textContent = "삭제 실패: " + res.error.message;
+            return;
+          }
+          // DB에서 지운 뒤 스토리지 파일도 정리 (실패해도 목록은 갱신)
+          if (item.storage_path) { sb.storage.from(BUCKET).remove([item.storage_path]); }
+          photoMsg.className = "save-msg ok";
+          photoMsg.textContent = "삭제됨 ✓";
+          loadPhotos();
+        });
+      }
+
+      upSubtype.addEventListener("change", function () {
+        var custom = (upSubtype.value === "__custom__");
+        upSubtypeCustom.hidden = !custom;
+        if (custom) { upSubtypeCustom.focus(); }
+      });
+      photoSubtabs.addEventListener("click", function (e) {
+        var btn = e.target.closest(".subtab");
+        if (!btn || !photoSubtabs.contains(btn)) { return; }
+        setActiveCat(btn.getAttribute("data-cat"));
+      });
+      uploadBtn.addEventListener("click", function () { uploadPhoto(); });
+
+
 
       /* ---- 로그인 ---- */
       loginForm.addEventListener("submit", function (e) {
@@ -840,6 +1106,8 @@
 
         // 출연작 탭 최초 진입 시 목록 로드
         if (name === "works" && !worksLoaded) { loadWorks(); }
+        // 사진 탭 최초 진입 시 목록 로드
+        if (name === "photos" && !photosLoaded) { loadPhotos(); }
       });
     })();
   </script>
