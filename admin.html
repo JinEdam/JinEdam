@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="robots" content="noindex, nofollow" />
-  <title>편집실 · 포트폴리오 관리</title>
+  <title>프로필 수정 페이지</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -313,7 +313,7 @@
   <!-- ===================== 로그인 화면 ===================== -->
   <div class="login-view" id="loginView">
     <div class="login-card">
-      <h1>편집실<span class="dot">.</span></h1>
+      <h1>프로필 수정 페이지<span class="dot">.</span></h1>
       <p class="sub">관리자 로그인</p>
       <form id="loginForm" novalidate>
         <div class="field">
@@ -334,7 +334,7 @@
   <!-- ===================== 편집 화면 ===================== -->
   <div class="app-view" id="appView" hidden>
     <header class="admin-bar">
-      <span class="logo">편집실<span class="dot">.</span></span>
+      <span class="logo">프로필 수정 페이지<span class="dot">.</span></span>
       <div class="bar-right">
         <span class="user-email" id="userEmail"></span>
         <a class="link-view" href="index.html" target="_blank" rel="noopener">사이트 보기 ↗</a>
@@ -467,7 +467,7 @@
 
       <section class="panel" id="panel-journal">
         <h2>소식</h2>
-        <p class="lead">공연 소식·근황 글을 작성합니다. 비공개로 두면 본인에게만 보이고, 공개 페이지에는 공개 글만 노출됩니다.</p>
+        <p class="lead">새 글을 작성합니다. 비공개로 두면 본인에게만 보이고, 공개 페이지에는 공개 글만 노출됩니다.</p>
 
         <form id="journalForm" class="work-form">
           <input type="hidden" id="j_id" />
@@ -633,6 +633,11 @@
       }
 
       /* ---- 프로필 불러오기 ---- */
+      /* 탭 제목에 이름 반영 ("[이름] · 프로필 수정 페이지") */
+      function setDocTitle(name) {
+        document.title = (name ? (name + " · ") : "") + "프로필 수정 페이지";
+      }
+
       function loadProfile() {
         profileMsg.className = "save-msg";
         profileMsg.textContent = "불러오는 중…";
@@ -648,6 +653,7 @@
             var val = d[key];
             fEl[key].value = (val === null || val === undefined) ? "" : String(val);
           }
+          setDocTitle(d.name_ko);
           profileMsg.className = "save-msg";
           profileMsg.textContent = "";
         });
@@ -687,6 +693,7 @@
           }
           profileMsg.className = "save-msg ok";
           profileMsg.textContent = "저장됨 ✓";
+          setDocTitle(payload.name_ko);
         });
       }
 
