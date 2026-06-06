@@ -254,6 +254,29 @@
     .video-item .vi-sub { color: var(--ink-mute); font-size: 0.84rem; margin-top: 2px; }
     .video-item .vi-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 
+    /* ===================== 소식 ===================== */
+    .panel .field input[type="file"] { background: transparent; border: none; padding: 0; color: var(--ink-soft); font-size: 0.86rem; }
+    .panel .field input[type="file"]::file-selector-button {
+      background: var(--surface-2); color: var(--ink); border: 1px solid var(--border); border-radius: 5px;
+      padding: 8px 14px; margin-right: 12px; cursor: pointer; font-family: inherit; font-size: 0.84rem;
+    }
+    .panel .field input[type="checkbox"] { width: auto; }
+    input[type="checkbox"] { accent-color: var(--gold); }
+    .j-publish { display: inline-flex; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--ink-soft); margin-bottom: 16px; cursor: pointer; }
+    .j-cover-current { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+    .j-cover-thumb { width: 90px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; background: var(--bg-2); }
+    .j-cover-remove { display: inline-flex; align-items: center; gap: 7px; font-size: 0.84rem; color: var(--ink-soft); cursor: pointer; }
+
+    .journal-item { display: flex; align-items: center; gap: 14px; padding: 13px 4px; border-bottom: 1px solid var(--border); }
+    .journal-item .ji-thumb { width: 72px; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 4px; flex: 0 0 auto; background: var(--bg-2); }
+    .journal-item .ji-main { flex: 1 1 auto; min-width: 0; }
+    .journal-item .ji-title { color: var(--ink); font-size: 1rem; }
+    .journal-item .ji-meta { color: var(--ink-mute); font-size: 0.8rem; margin-top: 3px; display: flex; align-items: center; gap: 8px; }
+    .ji-badge { font-size: 0.7rem; letter-spacing: 0.05em; padding: 2px 8px; border-radius: 100px; border: 1px solid var(--border-strong); }
+    .ji-badge.pub { color: var(--ok); border-color: rgba(111,191,139,0.4); }
+    .ji-badge.draft { color: var(--ink-mute); }
+    .journal-item .ji-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+
     @media (max-width: 560px) {
       .grid-2 { grid-template-columns: 1fr; gap: 0; }
       .batch-head { display: none; }
@@ -434,8 +457,29 @@
 
       <section class="panel" id="panel-journal">
         <h2>소식</h2>
-        <p class="lead">공연 소식·근황 게시글을 작성하고 공개 여부를 관리하게 됩니다.</p>
-        <div class="stub"><span class="badge">다음 단계</span><p>소식 작성은 Stage 3에서 구현됩니다.</p></div>
+        <p class="lead">공연 소식·근황 글을 작성합니다. 비공개로 두면 본인에게만 보이고, 공개 페이지에는 공개 글만 노출됩니다.</p>
+
+        <form id="journalForm" class="work-form">
+          <input type="hidden" id="j_id" />
+          <div class="field"><label for="j_title">제목</label><input type="text" id="j_title" /></div>
+          <div class="field"><label for="j_body">내용</label><textarea id="j_body" rows="7"></textarea></div>
+          <div class="field">
+            <label for="j_cover">커버 이미지 <span class="opt">(선택)</span></label>
+            <input type="file" id="j_cover" accept="image/*" />
+            <div class="j-cover-current" id="jCoverCurrent" hidden>
+              <img class="j-cover-thumb" id="jCoverThumb" alt="" />
+              <label class="j-cover-remove"><input type="checkbox" id="j_cover_remove" /> 현재 커버 제거</label>
+            </div>
+          </div>
+          <label class="j-publish"><input type="checkbox" id="j_published" checked /> 공개</label>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary btn-inline" id="journalSaveBtn">등록</button>
+            <button type="button" class="btn-ghost" id="journalCancelBtn" hidden>취소</button>
+            <span class="save-msg" id="journalMsg"></span>
+          </div>
+        </form>
+
+        <div class="works-list" id="journalList"></div>
       </section>
     </div>
   </div>
@@ -522,6 +566,24 @@
       var videosLoaded   = false;
       var videoEditId    = null;
 
+      /* 소식 요소 / 상태 */
+      var journalForm      = document.getElementById("journalForm");
+      var jId              = document.getElementById("j_id");
+      var jTitle           = document.getElementById("j_title");
+      var jBody            = document.getElementById("j_body");
+      var jCover           = document.getElementById("j_cover");
+      var jCoverCurrent    = document.getElementById("jCoverCurrent");
+      var jCoverThumb      = document.getElementById("jCoverThumb");
+      var jCoverRemove     = document.getElementById("j_cover_remove");
+      var jPublished       = document.getElementById("j_published");
+      var journalSaveBtn   = document.getElementById("journalSaveBtn");
+      var journalCancelBtn = document.getElementById("journalCancelBtn");
+      var journalMsg       = document.getElementById("journalMsg");
+      var journalList      = document.getElementById("journalList");
+      var journalCache       = [];
+      var journalLoaded      = false;
+      var journalEditCover   = null;   // 수정 중인 글의 기존 커버 경로
+
       /* ---- 로그인 에러 메시지 한글화 ---- */
       function krError(msg) {
         if (!msg) { return "로그인에 실패했습니다."; }
@@ -544,6 +606,7 @@
         photosLoaded = false;
         videosLoaded = false;
         videoEditId = null;
+        journalLoaded = false;
       }
       function showApp(session) {
         loginView.hidden = true;
@@ -1452,6 +1515,202 @@
       });
       addVideoRowBtn.addEventListener("click", function () { addVideoRow(); });
 
+      /* ============================================================
+         소식 (journal) — 작성 / 목록 / 수정 / 삭제 (커버 이미지 선택)
+         ============================================================ */
+      function loadJournal() {
+        journalMsg.className = "save-msg";
+        journalMsg.textContent = "불러오는 중…";
+        sb.from("journal").select("*").order("created_at", { ascending: false }).then(function (res) {
+          if (res.error) {
+            journalMsg.className = "save-msg err";
+            journalMsg.textContent = "불러오기 실패: " + res.error.message;
+            return;
+          }
+          journalCache = res.data || [];
+          journalLoaded = true;
+          journalMsg.className = "save-msg";
+          journalMsg.textContent = "";
+          renderJournal();
+        });
+      }
+
+      function makeJournalItem(item) {
+        var row = document.createElement("div");
+        row.className = "journal-item";
+        if (item.cover_path) {
+          var thumb = document.createElement("img");
+          thumb.className = "ji-thumb"; thumb.loading = "lazy"; thumb.alt = "";
+          thumb.src = publicUrl(item.cover_path);
+          row.appendChild(thumb);
+        }
+        var main = document.createElement("div");
+        main.className = "ji-main";
+        var title = document.createElement("div");
+        title.className = "ji-title"; title.textContent = item.title || "(제목 없음)";
+        var meta = document.createElement("div");
+        meta.className = "ji-meta";
+        var date = document.createElement("span");
+        date.textContent = item.created_at ? new Date(item.created_at).toLocaleDateString("ko-KR") : "";
+        var badge = document.createElement("span");
+        badge.className = "ji-badge " + (item.published ? "pub" : "draft");
+        badge.textContent = item.published ? "공개" : "비공개";
+        meta.appendChild(date); meta.appendChild(badge);
+        main.appendChild(title); main.appendChild(meta);
+
+        var actions = document.createElement("div");
+        actions.className = "ji-actions";
+        var editBtn = document.createElement("button");
+        editBtn.type = "button"; editBtn.className = "wi-btn"; editBtn.textContent = "수정";
+        editBtn.addEventListener("click", function () { startEditJournal(item); });
+        var delBtn = document.createElement("button");
+        delBtn.type = "button"; delBtn.className = "wi-btn del"; delBtn.textContent = "삭제";
+        delBtn.addEventListener("click", function () { deleteJournal(item); });
+        actions.appendChild(editBtn); actions.appendChild(delBtn);
+
+        row.appendChild(main); row.appendChild(actions);
+        return row;
+      }
+
+      function renderJournal() {
+        journalList.innerHTML = "";
+        if (!journalCache.length) {
+          var empty = document.createElement("div");
+          empty.className = "works-empty";
+          empty.textContent = "등록된 소식이 없습니다. 위에서 작성해 주세요.";
+          journalList.appendChild(empty);
+          return;
+        }
+        for (var i = 0; i < journalCache.length; i++) {
+          journalList.appendChild(makeJournalItem(journalCache[i]));
+        }
+      }
+
+      function startEditJournal(item) {
+        jId.value = item.id;
+        jTitle.value = item.title || "";
+        jBody.value = item.body || "";
+        jPublished.checked = !!item.published;
+        jCover.value = "";
+        jCoverRemove.checked = false;
+        journalEditCover = item.cover_path || null;
+        if (item.cover_path) {
+          jCoverThumb.src = publicUrl(item.cover_path);
+          jCoverCurrent.hidden = false;
+        } else {
+          jCoverCurrent.hidden = true;
+        }
+        journalSaveBtn.textContent = "수정 저장";
+        journalCancelBtn.hidden = false;
+        journalMsg.className = "save-msg";
+        journalMsg.textContent = "";
+        journalForm.scrollIntoView({ behavior: "smooth", block: "start" });
+        jTitle.focus();
+      }
+
+      function resetJournalForm() {
+        jId.value = "";
+        jTitle.value = "";
+        jBody.value = "";
+        jCover.value = "";
+        jCoverRemove.checked = false;
+        jCoverCurrent.hidden = true;
+        jPublished.checked = true;
+        journalEditCover = null;
+        journalSaveBtn.textContent = "등록";
+        journalCancelBtn.hidden = true;
+      }
+
+      function saveJournal() {
+        var title = jTitle.value.trim();
+        if (!title) { journalMsg.className = "save-msg err"; journalMsg.textContent = "제목을 입력하세요."; return; }
+        var body = jBody.value.trim() || null;
+        var published = jPublished.checked;
+        var editing = jId.value;
+        var oldPath = journalEditCover;
+        var newFile = jCover.files && jCover.files[0];
+
+        if (newFile) {
+          if (newFile.type && newFile.type.indexOf("image/") !== 0) {
+            journalMsg.className = "save-msg err"; journalMsg.textContent = "커버는 이미지 파일만 가능합니다."; return;
+          }
+          if (newFile.size > MAX_BYTES) {
+            journalMsg.className = "save-msg err"; journalMsg.textContent = "커버 이미지는 10MB 이하만 가능합니다."; return;
+          }
+        }
+
+        journalSaveBtn.disabled = true;
+        journalMsg.className = "save-msg";
+        journalMsg.textContent = "저장 중…";
+
+        function persist(finalCover, toDelete, uploadedNew) {
+          var payload = { title: title, body: body, cover_path: finalCover, published: published };
+          var q = editing
+            ? sb.from("journal").update(payload).eq("id", editing).select()
+            : sb.from("journal").insert(payload).select();
+          q.then(function (r) {
+            journalSaveBtn.disabled = false;
+            if (r.error || !r.data || r.data.length === 0) {
+              if (uploadedNew && finalCover) { sb.storage.from(BUCKET).remove([finalCover]); }  // 새 커버 롤백
+              journalMsg.className = "save-msg err";
+              journalMsg.textContent = "저장 실패: " + (r.error ? r.error.message : "기록된 행이 없습니다. 로그인/RLS 확인");
+              return;
+            }
+            if (toDelete) { sb.storage.from(BUCKET).remove([toDelete]); }   // 교체·제거된 기존 커버 정리
+            resetJournalForm();
+            journalMsg.className = "save-msg ok";
+            journalMsg.textContent = editing ? "수정됨 ✓" : "등록됨 ✓";
+            loadJournal();
+          });
+        }
+
+        if (newFile) {
+          var path = "journal/" + genUid() + fileExt(newFile.name);
+          sb.storage.from(BUCKET).upload(path, newFile, { contentType: newFile.type || "application/octet-stream", upsert: false }).then(function (up) {
+            if (up.error) {
+              journalSaveBtn.disabled = false;
+              journalMsg.className = "save-msg err";
+              journalMsg.textContent = "커버 업로드 실패: " + up.error.message;
+              return;
+            }
+            persist(path, oldPath, true);   // 새 커버로 교체, 기존 커버는 성공 후 삭제
+          });
+        } else if (editing && jCoverRemove.checked) {
+          persist(null, oldPath, false);    // 커버 제거
+        } else {
+          persist(editing ? oldPath : null, null, false);   // 변경 없음
+        }
+      }
+
+      function deleteJournal(item) {
+        var name = item.title || "이 글";
+        if (!window.confirm("'" + name + "'을(를) 삭제할까요? 되돌릴 수 없습니다.")) { return; }
+        journalMsg.className = "save-msg";
+        journalMsg.textContent = "삭제 중…";
+        sb.from("journal").delete().eq("id", item.id).then(function (res) {
+          if (res.error) {
+            journalMsg.className = "save-msg err";
+            journalMsg.textContent = "삭제 실패: " + res.error.message;
+            return;
+          }
+          if (item.cover_path) { sb.storage.from(BUCKET).remove([item.cover_path]); }
+          if (jId.value === item.id) { resetJournalForm(); }
+          journalMsg.className = "save-msg ok";
+          journalMsg.textContent = "삭제됨 ✓";
+          loadJournal();
+        });
+      }
+
+      journalForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        saveJournal();
+      });
+      journalCancelBtn.addEventListener("click", function () {
+        resetJournalForm();
+        journalMsg.className = "save-msg";
+        journalMsg.textContent = "";
+      });
+
 
 
       /* ---- 로그인 ---- */
@@ -1512,6 +1771,8 @@
         if (name === "photos" && !photosLoaded) { loadPhotos(); }
         // 영상 탭 최초 진입 시 목록 로드
         if (name === "videos" && !videosLoaded) { loadVideos(); }
+        // 소식 탭 최초 진입 시 목록 로드
+        if (name === "journal" && !journalLoaded) { loadJournal(); }
       });
     })();
   </script>
