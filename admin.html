@@ -122,20 +122,37 @@
     .panel h2 { font-family: var(--serif); font-weight: 500; font-size: 1.4rem; margin-bottom: 4px; }
     .panel .lead { color: var(--ink-mute); font-size: 0.88rem; margin-bottom: 26px; }
 
-    /* 연결 상태 카드 */
-    .status-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 22px 24px; }
-    .status-line { display: flex; align-items: center; gap: 10px; font-size: 0.92rem; }
-    .status-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--ink-mute); flex: 0 0 auto; }
-    .status-dot.ok { background: var(--ok); box-shadow: 0 0 0 4px rgba(111,191,139,0.15); }
-    .status-dot.err { background: var(--err); box-shadow: 0 0 0 4px rgba(217,139,120,0.15); }
-    .status-detail { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 0.86rem; color: var(--ink-soft); }
-    .status-detail .row { display: flex; gap: 12px; padding: 4px 0; }
-    .status-detail .k { color: var(--gold); min-width: 90px; }
-
     /* 빈 틀 안내 */
     .stub { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 56px 24px; text-align: center; color: var(--ink-mute); }
     .stub .badge { display: inline-block; font-size: 0.7rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); border: 1px solid var(--border-strong); border-radius: 100px; padding: 6px 14px; margin-bottom: 18px; }
     .stub p { max-width: 38ch; margin: 0 auto; font-size: 0.9rem; line-height: 1.7; }
+
+    /* ===================== 편집 폼 ===================== */
+    .form-group { border: 1px solid var(--border); border-radius: 8px; padding: 20px 22px 22px; margin-bottom: 20px; }
+    .form-group legend { font-family: var(--serif); font-size: 1rem; color: var(--gold); padding: 0 8px; margin-left: -8px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 18px; }
+    .panel .field { margin-bottom: 14px; }
+    .panel .field:last-child { margin-bottom: 0; }
+    .panel .field label { display: block; font-size: 0.78rem; letter-spacing: 0.04em; color: var(--ink-soft); margin-bottom: 7px; }
+    .panel .field label .opt { color: var(--ink-mute); font-size: 0.72rem; letter-spacing: 0; }
+    .panel .field input, .panel .field textarea {
+      width: 100%; background: var(--bg-2); border: 1px solid var(--border); border-radius: 5px;
+      color: var(--ink); font-family: inherit; font-size: 0.92rem; padding: 11px 13px;
+      transition: border-color 0.25s var(--ease); resize: vertical;
+    }
+    .panel .field input:focus, .panel .field textarea:focus { outline: none; border-color: var(--gold); }
+    /* date 입력 달력 아이콘을 어두운 테마에 맞게 */
+    .panel .field input[type="date"] { color-scheme: dark; }
+
+    .form-actions { display: flex; align-items: center; gap: 16px; margin-top: 4px; }
+    .btn-inline { width: auto; padding: 12px 32px; }
+    .save-msg { font-size: 0.85rem; }
+    .save-msg.ok  { color: var(--ok); }
+    .save-msg.err { color: var(--err); }
+
+    @media (max-width: 560px) {
+      .grid-2 { grid-template-columns: 1fr; gap: 0; }
+    }
 
     @media (max-width: 560px) {
       .user-email { display: none; }
@@ -186,17 +203,47 @@
         <button class="tab" type="button" data-panel="journal">소식</button>
       </nav>
 
-      <!-- 프로필 탭: 이번 단계에선 연결 확인 -->
+      <!-- 프로필 탭: 이름 · 기본정보 · 연락처 편집 -->
       <section class="panel active" id="panel-profile">
         <h2>프로필 · 기본정보</h2>
-        <p class="lead">아래에서 데이터베이스 연결 상태를 먼저 확인합니다. 편집 폼은 다음 단계에서 추가됩니다.</p>
-        <div class="status-card">
-          <div class="status-line">
-            <span class="status-dot" id="statusDot"></span>
-            <span id="statusText">연결 확인 중…</span>
+        <p class="lead">첫 화면에 보이는 이름·기본정보·연락처를 편집합니다. 저장하면 데이터베이스에 바로 반영됩니다.</p>
+
+        <form id="profileForm">
+          <fieldset class="form-group">
+            <legend>이름</legend>
+            <div class="grid-2">
+              <div class="field"><label for="f_name_ko">이름 (한글)</label><input type="text" id="f_name_ko" /></div>
+              <div class="field"><label for="f_name_en">이름 (영문)</label><input type="text" id="f_name_en" placeholder="HONG GIL-DONG" /></div>
+            </div>
+            <div class="field"><label for="f_intro">한 줄 소개 <span class="opt">(선택)</span></label><textarea id="f_intro" rows="2"></textarea></div>
+          </fieldset>
+
+          <fieldset class="form-group">
+            <legend>기본정보</legend>
+            <div class="grid-2">
+              <div class="field"><label for="f_birth_date">생년월일</label><input type="date" id="f_birth_date" /></div>
+              <div class="field"><label for="f_residence">거주지</label><input type="text" id="f_residence" placeholder="서울" /></div>
+              <div class="field"><label for="f_height_cm">키 (cm)</label><input type="number" id="f_height_cm" min="0" max="300" inputmode="numeric" /></div>
+              <div class="field"><label for="f_weight_kg">몸무게 (kg)</label><input type="number" id="f_weight_kg" min="0" max="500" inputmode="numeric" /></div>
+            </div>
+            <div class="field"><label for="f_specialties">특기</label><input type="text" id="f_specialties" placeholder="노래, 무술, 외국어 등" /></div>
+          </fieldset>
+
+          <fieldset class="form-group">
+            <legend>연락처</legend>
+            <div class="grid-2">
+              <div class="field"><label for="f_phone">연락처</label><input type="tel" id="f_phone" placeholder="010-0000-0000" /></div>
+              <div class="field"><label for="f_email">이메일</label><input type="email" id="f_email" placeholder="your@email.com" /></div>
+              <div class="field"><label for="f_instagram_url">Instagram 링크</label><input type="url" id="f_instagram_url" placeholder="https://instagram.com/..." /></div>
+              <div class="field"><label for="f_youtube_url">YouTube 링크</label><input type="url" id="f_youtube_url" placeholder="https://youtube.com/..." /></div>
+            </div>
+          </fieldset>
+
+          <div class="form-actions">
+            <button type="submit" class="btn-primary btn-inline" id="profileSaveBtn">저장</button>
+            <span class="save-msg" id="profileMsg"></span>
           </div>
-          <div class="status-detail" id="statusDetail" hidden></div>
-        </div>
+        </form>
       </section>
 
       <section class="panel" id="panel-works">
@@ -255,9 +302,17 @@
       var userEmail  = document.getElementById("userEmail");
       var logoutBtn  = document.getElementById("logoutBtn");
       var tabs       = document.getElementById("tabs");
-      var statusDot    = document.getElementById("statusDot");
-      var statusText   = document.getElementById("statusText");
-      var statusDetail = document.getElementById("statusDetail");
+
+      /* 프로필 폼 요소 */
+      var profileForm    = document.getElementById("profileForm");
+      var profileSaveBtn = document.getElementById("profileSaveBtn");
+      var profileMsg     = document.getElementById("profileMsg");
+      var PROFILE_FIELDS = ["name_ko","name_en","intro","birth_date","height_cm","weight_kg","specialties","residence","phone","email","instagram_url","youtube_url"];
+      var NUMBER_FIELDS  = ["height_cm","weight_kg"];
+      var fEl = {};
+      for (var fi = 0; fi < PROFILE_FIELDS.length; fi++) {
+        fEl[PROFILE_FIELDS[fi]] = document.getElementById("f_" + PROFILE_FIELDS[fi]);
+      }
 
       /* ---- 로그인 에러 메시지 한글화 ---- */
       function krError(msg) {
@@ -278,43 +333,71 @@
         loginView.hidden = true;
         appView.hidden = false;
         if (session && session.user) { userEmail.textContent = session.user.email || ""; }
-        testConnection();
+        loadProfile();
       }
 
-      /* ---- 연결 확인: profile 한 줄 읽기 ---- */
-      function testConnection() {
-        statusDot.className = "status-dot";
-        statusText.textContent = "연결 확인 중…";
-        statusDetail.hidden = true;
-        statusDetail.innerHTML = "";
-
+      /* ---- 프로필 불러오기 ---- */
+      function loadProfile() {
+        profileMsg.className = "save-msg";
+        profileMsg.textContent = "불러오는 중…";
         sb.from("profile").select("*").eq("id", 1).maybeSingle().then(function (res) {
           if (res.error) {
-            statusDot.className = "status-dot err";
-            statusText.textContent = "DB 읽기 실패: " + res.error.message;
+            profileMsg.className = "save-msg err";
+            profileMsg.textContent = "불러오기 실패: " + res.error.message;
             return;
           }
-          statusDot.className = "status-dot ok";
-          statusText.textContent = "Supabase 연결 정상 ✓";
-          var d = res.data;
-          if (d) {
-            var rows = [
-              ["이름", (d.name_ko || "-") + " / " + (d.name_en || "-")],
-              ["거주지", d.residence || "-"],
-              ["업데이트", d.updated_at ? new Date(d.updated_at).toLocaleString("ko-KR") : "-"]
-            ];
-            var html = "";
-            for (var i = 0; i < rows.length; i++) {
-              html += '<div class="row"><span class="k">' + rows[i][0] + '</span><span>' + rows[i][1] + "</span></div>";
-            }
-            statusDetail.innerHTML = html;
-            statusDetail.hidden = false;
-          } else {
-            statusText.textContent = "연결은 정상이나 프로필 행이 없습니다. schema.sql의 초기 insert를 확인하세요.";
-            statusDot.className = "status-dot";
+          var d = res.data || {};
+          for (var i = 0; i < PROFILE_FIELDS.length; i++) {
+            var key = PROFILE_FIELDS[i];
+            var val = d[key];
+            fEl[key].value = (val === null || val === undefined) ? "" : String(val);
           }
+          profileMsg.className = "save-msg";
+          profileMsg.textContent = "";
         });
       }
+
+      /* ---- 프로필 저장 ---- */
+      function saveProfile() {
+        var payload = { updated_at: new Date().toISOString() };
+        for (var i = 0; i < PROFILE_FIELDS.length; i++) {
+          var key = PROFILE_FIELDS[i];
+          var raw = fEl[key].value.trim();
+          if (raw === "") {
+            payload[key] = null;                 // 빈 값은 null 로 저장
+          } else if (NUMBER_FIELDS.indexOf(key) !== -1) {
+            var n = parseInt(raw, 10);
+            payload[key] = isNaN(n) ? null : n;  // 숫자 칸은 정수로
+          } else {
+            payload[key] = raw;
+          }
+        }
+
+        profileSaveBtn.disabled = true;
+        profileMsg.className = "save-msg";
+        profileMsg.textContent = "저장 중…";
+
+        sb.from("profile").update(payload).eq("id", 1).select().then(function (res) {
+          profileSaveBtn.disabled = false;
+          if (res.error) {
+            profileMsg.className = "save-msg err";
+            profileMsg.textContent = "저장 실패: " + res.error.message;
+            return;
+          }
+          if (!res.data || res.data.length === 0) {
+            profileMsg.className = "save-msg err";
+            profileMsg.textContent = "저장된 행이 없습니다. 로그인 상태와 RLS 정책을 확인하세요.";
+            return;
+          }
+          profileMsg.className = "save-msg ok";
+          profileMsg.textContent = "저장됨 ✓";
+        });
+      }
+
+      profileForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        saveProfile();
+      });
 
       /* ---- 로그인 ---- */
       loginForm.addEventListener("submit", function (e) {
