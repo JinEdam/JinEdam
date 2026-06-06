@@ -150,8 +150,38 @@
     .save-msg.ok  { color: var(--ok); }
     .save-msg.err { color: var(--err); }
 
+    /* ===================== 출연작 편집 ===================== */
+    .work-form { border: 1px solid var(--border); border-radius: 8px; padding: 20px 22px; margin-bottom: 26px; }
+    .work-form-grid { display: grid; grid-template-columns: 150px 90px 1.4fr 1fr; gap: 14px; margin-bottom: 16px; }
+    .work-form .field { margin-bottom: 0; }
+    .work-form select {
+      width: 100%; background: var(--bg-2); border: 1px solid var(--border); border-radius: 5px;
+      color: var(--ink); font-family: inherit; font-size: 0.92rem; padding: 11px 13px; color-scheme: dark;
+      transition: border-color 0.25s var(--ease);
+    }
+    .work-form select:focus { outline: none; border-color: var(--gold); }
+
+    .works-list { display: flex; flex-direction: column; gap: 26px; }
+    .work-group-title { font-family: var(--serif); font-size: 1.02rem; color: var(--gold); margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .work-item {
+      display: flex; align-items: baseline; gap: 16px; padding: 12px 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .work-item .wi-year { color: var(--ink-mute); font-size: 0.88rem; font-variant-numeric: tabular-nums; min-width: 46px; flex: 0 0 auto; }
+    .work-item .wi-main { flex: 1 1 auto; min-width: 0; }
+    .work-item .wi-title { color: var(--ink); font-size: 1rem; }
+    .work-item .wi-role { color: var(--gold); font-size: 0.85rem; margin-left: 8px; }
+    .work-item .wi-actions { display: flex; gap: 8px; flex: 0 0 auto; }
+    .wi-btn { background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--ink-mute); font-size: 0.78rem; padding: 5px 12px; transition: border-color 0.2s var(--ease), color 0.2s var(--ease); }
+    .wi-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .wi-btn.del:hover { border-color: var(--err); color: var(--err); }
+    .work-item.editing { background: rgba(201,162,92,0.06); border-radius: 6px; }
+    .works-empty { color: var(--ink-mute); font-size: 0.9rem; text-align: center; padding: 30px 0; }
+
     @media (max-width: 560px) {
       .grid-2 { grid-template-columns: 1fr; gap: 0; }
+      .work-form-grid { grid-template-columns: 1fr 1fr; }
+      .work-form-grid .field:nth-child(3), .work-form-grid .field:nth-child(4) { grid-column: span 2; }
     }
 
     @media (max-width: 560px) {
@@ -248,8 +278,33 @@
 
       <section class="panel" id="panel-works">
         <h2>출연작</h2>
-        <p class="lead">장르·연도·작품명·역할명 항목을 추가/수정/삭제하게 됩니다.</p>
-        <div class="stub"><span class="badge">다음 단계</span><p>출연작 편집 폼은 Stage 3에서 구현됩니다.</p></div>
+        <p class="lead">장르를 고르고 연도·작품명·역할명을 입력해 추가하세요. 항목을 누르면 수정·삭제할 수 있습니다.</p>
+
+        <form id="workForm" class="work-form">
+          <input type="hidden" id="w_id" />
+          <div class="work-form-grid">
+            <div class="field">
+              <label for="w_genre">장르</label>
+              <select id="w_genre">
+                <option value="">선택</option>
+                <option value="드라마">드라마</option>
+                <option value="영화">영화</option>
+                <option value="연극·뮤지컬">연극·뮤지컬</option>
+                <option value="광고·기타">광고·기타</option>
+              </select>
+            </div>
+            <div class="field"><label for="w_year">연도</label><input type="number" id="w_year" min="1900" max="2100" inputmode="numeric" placeholder="2025" /></div>
+            <div class="field"><label for="w_title">작품명</label><input type="text" id="w_title" /></div>
+            <div class="field"><label for="w_role">역할명</label><input type="text" id="w_role" placeholder="(선택)" /></div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary btn-inline" id="workSaveBtn">추가</button>
+            <button type="button" class="btn-ghost" id="workCancelBtn" hidden>취소</button>
+            <span class="save-msg" id="workMsg"></span>
+          </div>
+        </form>
+
+        <div class="works-list" id="worksList"></div>
       </section>
 
       <section class="panel" id="panel-photos">
@@ -314,6 +369,21 @@
         fEl[PROFILE_FIELDS[fi]] = document.getElementById("f_" + PROFILE_FIELDS[fi]);
       }
 
+      /* 출연작 요소 / 상태 */
+      var GENRES = ["드라마", "영화", "연극·뮤지컬", "광고·기타"];
+      var workForm       = document.getElementById("workForm");
+      var workSaveBtn    = document.getElementById("workSaveBtn");
+      var workCancelBtn  = document.getElementById("workCancelBtn");
+      var workMsg        = document.getElementById("workMsg");
+      var worksList      = document.getElementById("worksList");
+      var wId    = document.getElementById("w_id");
+      var wGenre = document.getElementById("w_genre");
+      var wYear  = document.getElementById("w_year");
+      var wTitle = document.getElementById("w_title");
+      var wRole  = document.getElementById("w_role");
+      var worksCache  = [];
+      var worksLoaded = false;
+
       /* ---- 로그인 에러 메시지 한글화 ---- */
       function krError(msg) {
         if (!msg) { return "로그인에 실패했습니다."; }
@@ -331,6 +401,7 @@
         appView.hidden = true;
         loginView.hidden = false;
         appShown = false;     // 로그아웃 시 초기화 → 다음 로그인 때 새로 불러옴
+        worksLoaded = false;
       }
       function showApp(session) {
         loginView.hidden = true;
@@ -407,6 +478,215 @@
         saveProfile();
       });
 
+      /* ============================================================
+         출연작 (works) — 목록 / 추가 / 수정 / 삭제
+         ============================================================ */
+      function loadWorks() {
+        workMsg.className = "save-msg";
+        workMsg.textContent = "불러오는 중…";
+        sb.from("works").select("*").then(function (res) {
+          if (res.error) {
+            workMsg.className = "save-msg err";
+            workMsg.textContent = "불러오기 실패: " + res.error.message;
+            return;
+          }
+          worksCache = res.data || [];
+          worksLoaded = true;
+          workMsg.className = "save-msg";
+          workMsg.textContent = "";
+          renderWorks();
+        });
+      }
+
+      function sortByYearDesc(a, b) {
+        var ya = (a.year === null || a.year === undefined) ? -Infinity : a.year;
+        var yb = (b.year === null || b.year === undefined) ? -Infinity : b.year;
+        return yb - ya;
+      }
+
+      function makeWorkItem(item) {
+        var row = document.createElement("div");
+        row.className = "work-item";
+        if (wId.value && wId.value === item.id) { row.className += " editing"; }
+
+        var year = document.createElement("span");
+        year.className = "wi-year";
+        year.textContent = (item.year === null || item.year === undefined) ? "—" : String(item.year);
+
+        var main = document.createElement("div");
+        main.className = "wi-main";
+        var title = document.createElement("span");
+        title.className = "wi-title";
+        title.textContent = item.title || "(제목 없음)";
+        main.appendChild(title);
+        if (item.role) {
+          var role = document.createElement("span");
+          role.className = "wi-role";
+          role.textContent = item.role;
+          main.appendChild(role);
+        }
+
+        var actions = document.createElement("div");
+        actions.className = "wi-actions";
+        var editBtn = document.createElement("button");
+        editBtn.type = "button"; editBtn.className = "wi-btn"; editBtn.textContent = "수정";
+        editBtn.addEventListener("click", function () { startEditWork(item); });
+        var delBtn = document.createElement("button");
+        delBtn.type = "button"; delBtn.className = "wi-btn del"; delBtn.textContent = "삭제";
+        delBtn.addEventListener("click", function () { deleteWork(item); });
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+
+        row.appendChild(year);
+        row.appendChild(main);
+        row.appendChild(actions);
+        return row;
+      }
+
+      function renderWorks() {
+        worksList.innerHTML = "";
+        if (!worksCache.length) {
+          var empty = document.createElement("div");
+          empty.className = "works-empty";
+          empty.textContent = "등록된 출연작이 없습니다. 위에서 추가해 주세요.";
+          worksList.appendChild(empty);
+          return;
+        }
+        // 알려진 장르 + 그 외(미분류) 순서로 그룹화
+        var groupsOrder = GENRES.slice();
+        var used = {};
+        for (var g = 0; g < groupsOrder.length; g++) { used[groupsOrder[g]] = true; }
+        var extra = [];
+        for (var i = 0; i < worksCache.length; i++) {
+          var gen = worksCache[i].genre;
+          if (!gen || !used[gen]) {
+            if (extra.indexOf("__기타__") === -1) { extra.push("__기타__"); }
+          }
+        }
+        var allGroups = groupsOrder.concat(extra);
+
+        for (var k = 0; k < allGroups.length; k++) {
+          var label = allGroups[k];
+          var items;
+          if (label === "__기타__") {
+            items = worksCache.filter(function (w) { return !w.genre || !used[w.genre]; });
+          } else {
+            items = worksCache.filter(function (w) { return w.genre === label; });
+          }
+          if (!items.length) { continue; }
+          items.sort(sortByYearDesc);
+
+          var group = document.createElement("div");
+          group.className = "work-group";
+          var h = document.createElement("div");
+          h.className = "work-group-title";
+          h.textContent = (label === "__기타__") ? "미분류" : label;
+          group.appendChild(h);
+          for (var j = 0; j < items.length; j++) {
+            group.appendChild(makeWorkItem(items[j]));
+          }
+          worksList.appendChild(group);
+        }
+      }
+
+      function startEditWork(item) {
+        wId.value = item.id;
+        wGenre.value = (item.genre && GENRES.indexOf(item.genre) !== -1) ? item.genre : "";
+        wYear.value = (item.year === null || item.year === undefined) ? "" : String(item.year);
+        wTitle.value = item.title || "";
+        wRole.value = item.role || "";
+        workSaveBtn.textContent = "수정 저장";
+        workCancelBtn.hidden = false;
+        workMsg.className = "save-msg";
+        workMsg.textContent = "";
+        renderWorks();                 // editing 하이라이트 갱신
+        workForm.scrollIntoView({ behavior: "smooth", block: "center" });
+        wTitle.focus();
+      }
+
+      function resetWorkForm() {
+        wId.value = "";
+        wGenre.value = "";
+        wYear.value = "";
+        wTitle.value = "";
+        wRole.value = "";
+        workSaveBtn.textContent = "추가";
+        workCancelBtn.hidden = true;
+      }
+
+      function saveWork() {
+        var genre = wGenre.value;
+        var title = wTitle.value.trim();
+        var role = wRole.value.trim();
+        var yearRaw = wYear.value.trim();
+        var year = null;
+        if (yearRaw !== "") {
+          var n = parseInt(yearRaw, 10);
+          year = isNaN(n) ? null : n;
+        }
+        if (!genre) { workMsg.className = "save-msg err"; workMsg.textContent = "장르를 선택하세요."; return; }
+        if (!title) { workMsg.className = "save-msg err"; workMsg.textContent = "작품명을 입력하세요."; return; }
+
+        var payload = { genre: genre, year: year, title: title, role: role || null };
+        var editingId = wId.value;
+
+        workSaveBtn.disabled = true;
+        workMsg.className = "save-msg";
+        workMsg.textContent = "저장 중…";
+
+        var query = editingId
+          ? sb.from("works").update(payload).eq("id", editingId).select()
+          : sb.from("works").insert(payload).select();
+
+        query.then(function (res) {
+          workSaveBtn.disabled = false;
+          if (res.error) {
+            workMsg.className = "save-msg err";
+            workMsg.textContent = "저장 실패: " + res.error.message;
+            return;
+          }
+          if (!res.data || res.data.length === 0) {
+            workMsg.className = "save-msg err";
+            workMsg.textContent = "저장된 행이 없습니다. 로그인 상태와 RLS 정책을 확인하세요.";
+            return;
+          }
+          resetWorkForm();
+          workMsg.className = "save-msg ok";
+          workMsg.textContent = editingId ? "수정됨 ✓" : "추가됨 ✓";
+          loadWorks();
+        });
+      }
+
+      function deleteWork(item) {
+        var name = item.title || "이 항목";
+        if (!window.confirm("'" + name + "'을(를) 삭제할까요? 되돌릴 수 없습니다.")) { return; }
+        workMsg.className = "save-msg";
+        workMsg.textContent = "삭제 중…";
+        sb.from("works").delete().eq("id", item.id).then(function (res) {
+          if (res.error) {
+            workMsg.className = "save-msg err";
+            workMsg.textContent = "삭제 실패: " + res.error.message;
+            return;
+          }
+          // 삭제하던 항목을 수정 중이었다면 폼 초기화
+          if (wId.value === item.id) { resetWorkForm(); }
+          workMsg.className = "save-msg ok";
+          workMsg.textContent = "삭제됨 ✓";
+          loadWorks();
+        });
+      }
+
+      workForm.addEventListener("submit", function (e) {
+        e.preventDefault();
+        saveWork();
+      });
+      workCancelBtn.addEventListener("click", function () {
+        resetWorkForm();
+        workMsg.className = "save-msg";
+        workMsg.textContent = "";
+        renderWorks();
+      });
+
       /* ---- 로그인 ---- */
       loginForm.addEventListener("submit", function (e) {
         e.preventDefault();
@@ -458,6 +738,9 @@
         for (var j = 0; j < panels.length; j++) { panels[j].classList.remove("active"); }
         var target = document.getElementById("panel-" + name);
         if (target) { target.classList.add("active"); }
+
+        // 출연작 탭 최초 진입 시 목록 로드
+        if (name === "works" && !worksLoaded) { loadWorks(); }
       });
     })();
   </script>
