@@ -228,6 +228,9 @@
     .pc-del { background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--ink-mute); font-size: 0.74rem; padding: 5px 9px; cursor: pointer; flex: 1 1 auto; transition: border-color 0.2s var(--ease), color 0.2s var(--ease); }
     .pc-move { background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--ink-mute); font-size: 0.8rem; padding: 5px 0; cursor: pointer; transition: border-color 0.2s var(--ease), color 0.2s var(--ease); }
     .pc-move:hover { border-color: var(--gold); color: var(--gold); }
+    .pc-main { width: 100%; background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--ink-mute); font-size: 0.76rem; padding: 6px; cursor: pointer; transition: border-color 0.2s var(--ease), color 0.2s var(--ease), background 0.2s var(--ease); }
+    .pc-main:hover { border-color: var(--gold); color: var(--gold); }
+    .pc-main.active { border-color: var(--gold); color: var(--gold); background: rgba(201,162,92,0.12); }
 
     /* 드래그 / 순서 이동 공통 */
     .photo-card[draggable="true"], .video-item[draggable="true"] { cursor: grab; }
@@ -1085,7 +1088,16 @@
         del.addEventListener("click", function () { deletePhoto(item); });
         pcActions.appendChild(prev); pcActions.appendChild(nextB); pcActions.appendChild(del);
 
-        foot.appendChild(label); foot.appendChild(pcActions);
+        foot.appendChild(label);
+        if (item.category === "profile") {
+          var mainBtn = document.createElement("button");
+          mainBtn.type = "button";
+          mainBtn.className = "pc-main" + (item.is_main ? " active" : "");
+          mainBtn.textContent = item.is_main ? "★ 대표 사진" : "☆ 대표로 지정";
+          mainBtn.addEventListener("click", function () { setMainPhoto(item); });
+          foot.appendChild(mainBtn);
+        }
+        foot.appendChild(pcActions);
         card.appendChild(img); card.appendChild(foot);
         return card;
       }
@@ -1291,6 +1303,31 @@
           photoMsg.className = "save-msg ok";
           photoMsg.textContent = "삭제됨 ✓";
           loadPhotos();
+        });
+      }
+
+      /* ---- 대표 사진 지정 (프로필 사진 중 하나만) ---- */
+      function setMainPhoto(item) {
+        if (item.category !== "profile") { return; }
+        var makeMain = !item.is_main;   // 이미 대표면 해제, 아니면 지정
+        var updates = [];
+        for (var i = 0; i < photosCache.length; i++) {
+          var p = photosCache[i];
+          if (p.category !== "profile") { continue; }
+          // 대표로 지정하면 나머지는 모두 해제, 해제하면 대상만 false
+          var target = (p.id === item.id) ? makeMain : (makeMain ? false : !!p.is_main);
+          if (!!p.is_main !== target) { updates.push({ id: p.id, is_main: target }); p.is_main = target; }
+        }
+        renderPhotos();   // 버튼 상태 즉시 반영
+        if (!updates.length) { return; }
+        photoMsg.className = "save-msg";
+        photoMsg.textContent = "대표 사진 저장 중…";
+        var ps = updates.map(function (u) { return sb.from("photos").update({ is_main: u.is_main }).eq("id", u.id); });
+        Promise.all(ps).then(function (results) {
+          var failed = false;
+          for (var k = 0; k < results.length; k++) { if (results[k] && results[k].error) { failed = true; } }
+          if (failed) { photoMsg.className = "save-msg err"; photoMsg.textContent = "대표 사진 저장 실패. 새로고침 후 다시 시도하세요."; loadPhotos(); }
+          else { photoMsg.className = "save-msg ok"; photoMsg.textContent = makeMain ? "대표 사진 지정됨 ✓" : "대표 해제됨 ✓"; }
         });
       }
 
