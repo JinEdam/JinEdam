@@ -278,13 +278,12 @@
     .work-cat .en { font-family: var(--serif-la); font-style: italic; font-size: 0.92rem; color: var(--gold); letter-spacing: 0.04em; }
     .work-list { margin-top: 12px; border-top: 1px solid var(--border); }
     .work-row {
-      display: grid; grid-template-columns: 84px 1fr auto; gap: 20px; align-items: baseline;
+      display: grid; grid-template-columns: 84px 1fr; gap: 20px; align-items: baseline;
       padding: 15px 0; border-bottom: 1px solid var(--border);
     }
     .work-row .yr { color: var(--ink-mute); font-size: 0.9rem; font-variant-numeric: tabular-nums; }
     .work-row .ttl { color: var(--ink); font-size: 1.02rem; }
     .work-row .ttl .role { color: var(--gold); font-size: 0.86rem; margin-left: 10px; }
-    .work-row .extra { color: var(--ink-mute); font-size: 0.85rem; text-align: right; white-space: nowrap; }
 
     /* ============================================================
        GALLERY — 사진
@@ -412,7 +411,6 @@
       .gallery-item.tall { grid-row: span 1; }
       .fact-row { grid-template-columns: 80px 1fr; }
       .work-row { grid-template-columns: 60px 1fr; gap: 12px; }
-      .work-row .extra { grid-column: 2; text-align: left; white-space: normal; }
       .work-row .ttl .role { display: block; margin-left: 0; margin-top: 2px; }
     }
   </style>
@@ -487,30 +485,30 @@
         <div class="work-group reveal">
           <h3 class="work-cat">드라마 <span class="en">Drama</span></h3>
           <div class="work-list">
-            <div class="work-row"><span class="yr">2025</span><span class="ttl">작품명 <span class="role">역할명</span></span><span class="extra">방송사 / 제작사</span></div>
-            <div class="work-row"><span class="yr">2024</span><span class="ttl">작품명 <span class="role">역할명</span></span><span class="extra">방송사 / 제작사</span></div>
+            <div class="work-row"><span class="yr">2025</span><span class="ttl">작품명 <span class="role">역할명</span></span></div>
+            <div class="work-row"><span class="yr">2024</span><span class="ttl">작품명 <span class="role">역할명</span></span></div>
           </div>
         </div>
 
         <div class="work-group reveal">
           <h3 class="work-cat">영화 <span class="en">Film</span></h3>
           <div class="work-list">
-            <div class="work-row"><span class="yr">2024</span><span class="ttl">작품명 <span class="role">역할명</span></span><span class="extra">감독 / 배급</span></div>
-            <div class="work-row"><span class="yr">2023</span><span class="ttl">단편 영화 제목 <span class="role">역할명</span></span><span class="extra">감독</span></div>
+            <div class="work-row"><span class="yr">2024</span><span class="ttl">작품명 <span class="role">역할명</span></span></div>
+            <div class="work-row"><span class="yr">2023</span><span class="ttl">단편 영화 제목 <span class="role">역할명</span></span></div>
           </div>
         </div>
 
         <div class="work-group reveal">
           <h3 class="work-cat">연극 · 뮤지컬 <span class="en">Stage</span></h3>
           <div class="work-list">
-            <div class="work-row"><span class="yr">2023</span><span class="ttl">공연명 <span class="role">배역</span></span><span class="extra">극단 / 극장</span></div>
+            <div class="work-row"><span class="yr">2023</span><span class="ttl">공연명 <span class="role">배역</span></span></div>
           </div>
         </div>
 
         <div class="work-group reveal">
           <h3 class="work-cat">광고 · 기타 <span class="en">Commercial</span></h3>
           <div class="work-list">
-            <div class="work-row"><span class="yr">2024</span><span class="ttl">브랜드명 광고</span><span class="extra">TVC / 디지털</span></div>
+            <div class="work-row"><span class="yr">2024</span><span class="ttl">브랜드명 광고</span></div>
           </div>
         </div>
       </div>
