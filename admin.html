@@ -325,15 +325,23 @@
       }
 
       /* ---- 화면 전환 ---- */
+      var appShown = false;   // 앱 진입 후 폼을 이미 채웠는지
+
       function showLogin() {
         appView.hidden = true;
         loginView.hidden = false;
+        appShown = false;     // 로그아웃 시 초기화 → 다음 로그인 때 새로 불러옴
       }
       function showApp(session) {
         loginView.hidden = true;
         appView.hidden = false;
         if (session && session.user) { userEmail.textContent = session.user.email || ""; }
-        loadProfile();
+        // 토큰 자동 갱신·탭 재포커스로 인증 이벤트가 다시 발생해도
+        // 폼은 최초 1회만 채운다 (작성 중 내용이 지워지지 않도록)
+        if (!appShown) {
+          appShown = true;
+          loadProfile();
+        }
       }
 
       /* ---- 프로필 불러오기 ---- */
