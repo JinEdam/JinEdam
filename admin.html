@@ -220,9 +220,19 @@
     .photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
     .photo-card { border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; }
     .photo-card .thumb { width: 100%; aspect-ratio: 1 / 1; object-fit: cover; display: block; background: var(--bg-2); }
-    .photo-card .pc-foot { padding: 8px 10px; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 38px; }
-    .photo-card .pc-label { font-size: 0.76rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .pc-del { background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--ink-mute); font-size: 0.74rem; padding: 4px 9px; cursor: pointer; flex: 0 0 auto; transition: border-color 0.2s var(--ease), color 0.2s var(--ease); }
+    .photo-card .pc-foot { padding: 8px 10px; display: flex; flex-direction: column; align-items: stretch; gap: 7px; }
+    .photo-card .pc-label { font-size: 0.76rem; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-height: 1em; }
+    .pc-actions { display: flex; gap: 6px; }
+    .pc-move { flex: 1 1 auto; }
+    .pc-del { background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--ink-mute); font-size: 0.74rem; padding: 5px 9px; cursor: pointer; flex: 1 1 auto; transition: border-color 0.2s var(--ease), color 0.2s var(--ease); }
+    .pc-move { background: transparent; border: 1px solid var(--border); border-radius: 5px; color: var(--ink-mute); font-size: 0.8rem; padding: 5px 0; cursor: pointer; transition: border-color 0.2s var(--ease), color 0.2s var(--ease); }
+    .pc-move:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* 드래그 / 순서 이동 공통 */
+    .photo-card[draggable="true"], .video-item[draggable="true"] { cursor: grab; }
+    .photo-card.dragging, .video-item.dragging { opacity: 0.45; }
+    .drag-handle { color: var(--ink-mute); font-size: 1.1rem; flex: 0 0 auto; cursor: grab; user-select: none; }
+    .wi-btn.move { padding: 5px 9px; min-width: 30px; }
     .pc-del:hover { border-color: var(--err); color: var(--err); }
     .photos-empty { grid-column: 1 / -1; color: var(--ink-mute); font-size: 0.9rem; text-align: center; padding: 30px 0; }
 
@@ -551,6 +561,7 @@
       var photosLoaded = false;
       var activeCat    = "profile";
       var pending      = [];   // 업로드 대기 [{ file, url, rowEl }]
+      var draggedPhotoId = null;
       var PROFILE_SUBTYPES = ["클로즈업샷", "웨이스트샷", "전신샷"];
       var CAT_LABEL = { profile: "프로필", still: "스틸컷", daily: "현재모습" };
       var MAX_BYTES = 10 * 1024 * 1024;   // 사진 최대 10MB
@@ -565,6 +576,7 @@
       var videosCache    = [];
       var videosLoaded   = false;
       var videoEditId    = null;
+      var draggedVideoId = null;
 
       /* 소식 요소 / 상태 */
       var journalForm      = document.getElementById("journalForm");
@@ -1027,10 +1039,23 @@
       function makePhotoCard(item) {
         var card = document.createElement("div");
         card.className = "photo-card";
+        card.draggable = true;
+        card.addEventListener("dragstart", function (e) {
+          draggedPhotoId = item.id; card.classList.add("dragging");
+          if (e.dataTransfer) { e.dataTransfer.effectAllowed = "move"; }
+        });
+        card.addEventListener("dragend", function () { draggedPhotoId = null; card.classList.remove("dragging"); });
+        card.addEventListener("dragover", function (e) { e.preventDefault(); });
+        card.addEventListener("drop", function (e) {
+          e.preventDefault();
+          if (draggedPhotoId) { reorderPhotoByDrag(draggedPhotoId, item.id); }
+        });
+
         var img = document.createElement("img");
         img.className = "thumb"; img.loading = "lazy";
         img.alt = item.subtype || item.caption || "사진";
         img.src = publicUrl(item.storage_path);
+
         var foot = document.createElement("div");
         foot.className = "pc-foot";
         var label = document.createElement("span");
@@ -1038,10 +1063,21 @@
         if (item.category === "profile") { label.textContent = item.subtype || "구분 없음"; }
         else if (item.category === "still") { label.textContent = item.caption || ""; }
         else { label.textContent = ""; }
+
+        var pcActions = document.createElement("div");
+        pcActions.className = "pc-actions";
+        var prev = document.createElement("button");
+        prev.type = "button"; prev.className = "pc-move"; prev.textContent = "←"; prev.setAttribute("aria-label", "앞으로");
+        prev.addEventListener("click", function () { movePhoto(item.id, -1); });
+        var nextB = document.createElement("button");
+        nextB.type = "button"; nextB.className = "pc-move"; nextB.textContent = "→"; nextB.setAttribute("aria-label", "뒤로");
+        nextB.addEventListener("click", function () { movePhoto(item.id, 1); });
         var del = document.createElement("button");
         del.type = "button"; del.className = "pc-del"; del.textContent = "삭제";
         del.addEventListener("click", function () { deletePhoto(item); });
-        foot.appendChild(label); foot.appendChild(del);
+        pcActions.appendChild(prev); pcActions.appendChild(nextB); pcActions.appendChild(del);
+
+        foot.appendChild(label); foot.appendChild(pcActions);
         card.appendChild(img); card.appendChild(foot);
         return card;
       }
@@ -1250,6 +1286,59 @@
         });
       }
 
+      /* ---- 사진 순서 변경 (현재 영역 내에서) ---- */
+      function photoOrderedIds() {
+        return photosCache.filter(function (p) { return p.category === activeCat; })
+          .sort(sortPhotos).map(function (p) { return p.id; });
+      }
+      function applyPhotoOrder(orderedIds) {
+        var byId = {};
+        for (var i = 0; i < photosCache.length; i++) { byId[photosCache[i].id] = photosCache[i]; }
+        var updates = [];
+        for (var j = 0; j < orderedIds.length; j++) {
+          var it = byId[orderedIds[j]];
+          if (!it) { continue; }
+          if ((it.sort_order || 0) !== j) { updates.push({ id: it.id, sort_order: j }); }
+          it.sort_order = j;
+        }
+        renderPhotos();
+        if (!updates.length) { return; }
+        photoMsg.className = "save-msg";
+        photoMsg.textContent = "순서 저장 중…";
+        var ps = updates.map(function (u) { return sb.from("photos").update({ sort_order: u.sort_order }).eq("id", u.id); });
+        Promise.all(ps).then(function (results) {
+          var failed = false;
+          for (var k = 0; k < results.length; k++) { if (results[k] && results[k].error) { failed = true; } }
+          if (failed) { photoMsg.className = "save-msg err"; photoMsg.textContent = "순서 저장 실패. 새로고침 후 다시 시도하세요."; loadPhotos(); }
+          else { photoMsg.className = "save-msg ok"; photoMsg.textContent = "순서 저장됨 ✓"; }
+        });
+      }
+      function movePhoto(id, dir) {
+        var ids = photoOrderedIds();
+        var idx = ids.indexOf(id);
+        var ni = idx + dir;
+        if (idx < 0 || ni < 0 || ni >= ids.length) { return; }
+        ids.splice(idx, 1);
+        ids.splice(ni, 0, id);
+        applyPhotoOrder(ids);
+      }
+      function reorderPhotoByDrag(draggedId, targetId) {
+        if (draggedId === targetId) { return; }
+        // 같은 영역(카테고리) 안에서만 순서 변경
+        var byId = {};
+        for (var i = 0; i < photosCache.length; i++) { byId[photosCache[i].id] = photosCache[i]; }
+        if (!byId[draggedId] || !byId[targetId]) { return; }
+        if (byId[draggedId].category !== byId[targetId].category) { return; }
+        var ids = photoOrderedIds();
+        var di = ids.indexOf(draggedId);
+        if (di < 0) { return; }
+        ids.splice(di, 1);
+        var ti = ids.indexOf(targetId);
+        if (ti < 0) { return; }
+        ids.splice(ti, 0, draggedId);
+        applyPhotoOrder(ids);
+      }
+
       upFile.addEventListener("change", function () {
         if (upFile.files && upFile.files.length) { addFiles(upFile.files); }
         upFile.value = "";   // 같은 파일 다시 선택 가능하도록 초기화
@@ -1396,6 +1485,21 @@
       function makeVideoDisplay(item) {
         var row = document.createElement("div");
         row.className = "video-item";
+        row.draggable = true;
+        row.addEventListener("dragstart", function (e) {
+          draggedVideoId = item.id; row.classList.add("dragging");
+          if (e.dataTransfer) { e.dataTransfer.effectAllowed = "move"; }
+        });
+        row.addEventListener("dragend", function () { draggedVideoId = null; row.classList.remove("dragging"); });
+        row.addEventListener("dragover", function (e) { e.preventDefault(); });
+        row.addEventListener("drop", function (e) {
+          e.preventDefault();
+          if (draggedVideoId) { reorderVideoByDrag(draggedVideoId, item.id); }
+        });
+
+        var handle = document.createElement("span");
+        handle.className = "drag-handle"; handle.textContent = "⠿"; handle.setAttribute("aria-hidden", "true");
+
         var thumb = document.createElement("img");
         thumb.className = "vi-thumb"; thumb.loading = "lazy"; thumb.alt = "";
         thumb.src = ytThumb(item.youtube_id);
@@ -1411,14 +1515,20 @@
         }
         var actions = document.createElement("div");
         actions.className = "vi-actions";
+        var upBtn = document.createElement("button");
+        upBtn.type = "button"; upBtn.className = "wi-btn move"; upBtn.textContent = "↑"; upBtn.setAttribute("aria-label", "위로");
+        upBtn.addEventListener("click", function () { moveVideo(item.id, -1); });
+        var downBtn = document.createElement("button");
+        downBtn.type = "button"; downBtn.className = "wi-btn move"; downBtn.textContent = "↓"; downBtn.setAttribute("aria-label", "아래로");
+        downBtn.addEventListener("click", function () { moveVideo(item.id, 1); });
         var editBtn = document.createElement("button");
         editBtn.type = "button"; editBtn.className = "wi-btn"; editBtn.textContent = "수정";
         editBtn.addEventListener("click", function () { videoEditId = item.id; renderVideos(); });
         var delBtn = document.createElement("button");
         delBtn.type = "button"; delBtn.className = "wi-btn del"; delBtn.textContent = "삭제";
         delBtn.addEventListener("click", function () { deleteVideo(item); });
-        actions.appendChild(editBtn); actions.appendChild(delBtn);
-        row.appendChild(thumb); row.appendChild(main); row.appendChild(actions);
+        actions.appendChild(upBtn); actions.appendChild(downBtn); actions.appendChild(editBtn); actions.appendChild(delBtn);
+        row.appendChild(handle); row.appendChild(thumb); row.appendChild(main); row.appendChild(actions);
         return row;
       }
 
@@ -1505,6 +1615,53 @@
           videoMsg.textContent = "삭제됨 ✓";
           loadVideos();
         });
+      }
+
+      /* ---- 영상 순서 변경 ---- */
+      function videoOrderedIds() {
+        return videosCache.slice().sort(sortVideos).map(function (v) { return v.id; });
+      }
+      function applyVideoOrder(orderedIds) {
+        var byId = {};
+        for (var i = 0; i < videosCache.length; i++) { byId[videosCache[i].id] = videosCache[i]; }
+        var updates = [];
+        for (var j = 0; j < orderedIds.length; j++) {
+          var it = byId[orderedIds[j]];
+          if (!it) { continue; }
+          if ((it.sort_order || 0) !== j) { updates.push({ id: it.id, sort_order: j }); }
+          it.sort_order = j;
+        }
+        renderVideos();   // 즉시 반영
+        if (!updates.length) { return; }
+        videoMsg.className = "save-msg";
+        videoMsg.textContent = "순서 저장 중…";
+        var ps = updates.map(function (u) { return sb.from("videos").update({ sort_order: u.sort_order }).eq("id", u.id); });
+        Promise.all(ps).then(function (results) {
+          var failed = false;
+          for (var k = 0; k < results.length; k++) { if (results[k] && results[k].error) { failed = true; } }
+          if (failed) { videoMsg.className = "save-msg err"; videoMsg.textContent = "순서 저장 실패. 새로고침 후 다시 시도하세요."; loadVideos(); }
+          else { videoMsg.className = "save-msg ok"; videoMsg.textContent = "순서 저장됨 ✓"; }
+        });
+      }
+      function moveVideo(id, dir) {
+        var ids = videoOrderedIds();
+        var idx = ids.indexOf(id);
+        var ni = idx + dir;
+        if (idx < 0 || ni < 0 || ni >= ids.length) { return; }
+        ids.splice(idx, 1);
+        ids.splice(ni, 0, id);
+        applyVideoOrder(ids);
+      }
+      function reorderVideoByDrag(draggedId, targetId) {
+        if (draggedId === targetId) { return; }
+        var ids = videoOrderedIds();
+        var di = ids.indexOf(draggedId);
+        if (di < 0) { return; }
+        ids.splice(di, 1);
+        var ti = ids.indexOf(targetId);
+        if (ti < 0) { return; }
+        ids.splice(ti, 0, draggedId);
+        applyVideoOrder(ids);
       }
 
       resetVideoRows();   // 시작 시 입력 줄 2개 준비
