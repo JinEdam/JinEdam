@@ -52,7 +52,7 @@
       --ink-mute:  #847c6f;
       --gold:      #c9a25c;
       --gold-soft: #e2c98e;
-      --header-bg:    rgba(16, 14, 12, 0.78);
+      --header-bg:    rgba(16, 14, 12, 0.92);
       --nav-panel-bg: rgba(16, 14, 12, 0.97);
       --grain: 0.05;
     }
@@ -68,7 +68,7 @@
       --ink-mute:  #8a8174;
       --gold:      #8f5e17;
       --gold-soft: #a8731f;
-      --header-bg:    rgba(247, 243, 236, 0.82);
+      --header-bg:    rgba(247, 243, 236, 0.94);
       --nav-panel-bg: rgba(247, 243, 236, 0.98);
       --grain: 0.03;
     }
@@ -215,11 +215,12 @@
       width: 100%; position: relative; z-index: 1;
     }
 
-    .hero-portrait { position: relative; aspect-ratio: 3 / 4; border-radius: 4px; overflow: hidden; }
+    .hero-portrait { position: relative; border-radius: 4px; overflow: hidden; }
     .hero-portrait::after {
       content: ""; position: absolute; inset: 0; border: 1px solid var(--gold);
       opacity: 0.35; border-radius: 4px; transform: translate(14px, 14px); pointer-events: none; z-index: -1;
     }
+    .hero-portrait .photo-ph { height: auto; aspect-ratio: 3 / 4; }
 
     .photo-ph {
       width: 100%; height: 100%;
@@ -394,7 +395,7 @@
     .lightbox-close:hover { color: var(--gold); transform: rotate(90deg); }
 
     /* ===================== 동적 콘텐츠 (Stage 6) ===================== */
-    .hero-portrait img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .hero-portrait img { width: 100%; height: auto; display: block; }
 
     .photo-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
     .photo-tab { background: transparent; border: 1px solid var(--border); border-radius: 100px; color: var(--ink-mute); font-size: 0.84rem; letter-spacing: 0.02em; padding: 8px 18px; cursor: pointer; transition: border-color 0.25s var(--ease), color 0.25s var(--ease), background 0.25s var(--ease); }
@@ -416,16 +417,28 @@
     .empty-note { color: var(--ink-mute); font-size: 0.92rem; text-align: center; padding: 36px 0; margin-top: 20px; }
 
     /* 맨 위로 버튼 */
-    .to-top {
+    /* 우하단 떠 있는 버튼들 (공유 / 복사 / 맨 위로) */
+    .fab-stack {
       position: fixed; right: clamp(16px, 4vw, 36px); bottom: clamp(16px, 4vw, 36px);
+      display: flex; flex-direction: column; gap: 10px; z-index: 900;
+    }
+    .fab {
       width: 46px; height: 46px; border-radius: 50%; border: 1px solid var(--border-strong);
       background: var(--surface); color: var(--ink); cursor: pointer; display: grid; place-items: center;
-      opacity: 0; visibility: hidden; transform: translateY(10px); z-index: 900;
       transition: opacity 0.3s var(--ease), transform 0.3s var(--ease), border-color 0.25s var(--ease), color 0.25s var(--ease);
     }
+    .fab:hover { border-color: var(--gold); color: var(--gold); }
+    .fab svg { width: 20px; height: 20px; }
+    .to-top { opacity: 0; visibility: hidden; transform: translateY(10px); }
     .to-top.show { opacity: 1; visibility: visible; transform: none; }
-    .to-top:hover { border-color: var(--gold); color: var(--gold); }
-    .to-top svg { width: 20px; height: 20px; }
+    .fab-toast {
+      position: absolute; right: 0; bottom: 100%; margin-bottom: 12px;
+      background: var(--surface); border: 1px solid var(--border-strong); border-radius: 100px;
+      padding: 8px 14px; font-size: 0.8rem; color: var(--ink); white-space: nowrap;
+      opacity: 0; transform: translateY(6px); pointer-events: none;
+      transition: opacity 0.25s var(--ease), transform 0.25s var(--ease);
+    }
+    .fab-toast.show { opacity: 1; transform: none; }
 
     /* ============================================================
        반응형
@@ -580,10 +593,19 @@
     </div>
   </footer>
 
-  <!-- ===================== 맨 위로 ===================== -->
-  <button class="to-top" id="toTop" type="button" aria-label="맨 위로 이동">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
-  </button>
+  <!-- ===================== 우하단 버튼 (공유 / 복사 / 맨 위로) ===================== -->
+  <div class="fab-stack">
+    <span class="fab-toast" id="fabToast" role="status" aria-live="polite"></span>
+    <button class="fab" id="shareBtn" type="button" aria-label="페이지 공유">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/></svg>
+    </button>
+    <button class="fab" id="copyBtn" type="button" aria-label="링크 복사">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="13" height="13" x="9" y="9" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+    </button>
+    <button class="fab to-top" id="toTop" type="button" aria-label="맨 위로 이동">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>
+    </button>
+  </div>
 
   <!-- ===================== 라이트박스 ===================== -->
   <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="사진 확대 보기">
@@ -647,6 +669,50 @@
       if (toTop) {
         toTop.addEventListener("click", function () {
           window.scrollTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+        });
+      }
+
+      /* ---- 링크 공유 / 복사 ---- */
+      var shareBtn = document.getElementById("shareBtn");
+      var copyBtn = document.getElementById("copyBtn");
+      var fabToast = document.getElementById("fabToast");
+      var toastTimer = null;
+      function showToast(msg) {
+        if (!fabToast) { return; }
+        fabToast.textContent = msg;
+        fabToast.classList.add("show");
+        if (toastTimer) { window.clearTimeout(toastTimer); }
+        toastTimer = window.setTimeout(function () { fabToast.classList.remove("show"); }, 2000);
+      }
+      function fallbackCopy(text) {
+        try {
+          var ta = document.createElement("textarea");
+          ta.value = text; ta.setAttribute("readonly", "");
+          ta.style.position = "fixed"; ta.style.left = "-9999px"; ta.style.opacity = "0";
+          document.body.appendChild(ta); ta.select();
+          var ok = document.execCommand("copy");
+          document.body.removeChild(ta);
+          showToast(ok ? "링크가 복사되었습니다" : "복사에 실패했습니다");
+        } catch (e) { showToast("복사에 실패했습니다"); }
+      }
+      function copyLink() {
+        var url = window.location.href;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(url).then(
+            function () { showToast("링크가 복사되었습니다"); },
+            function () { fallbackCopy(url); }
+          );
+        } else { fallbackCopy(url); }
+      }
+      if (copyBtn) { copyBtn.addEventListener("click", copyLink); }
+      if (shareBtn) {
+        shareBtn.addEventListener("click", function () {
+          var url = window.location.href;
+          if (navigator.share) {
+            navigator.share({ title: document.title, text: "배우 진이담 포트폴리오", url: url }).catch(function () { /* 사용자가 취소함 */ });
+          } else {
+            copyLink();   // 공유 미지원 환경(데스크톱 등)에서는 링크 복사로 대체
+          }
         });
       }
 
