@@ -278,6 +278,17 @@
     .stat-num { display: block; font-size: 1.7rem; font-weight: 600; color: var(--gold); line-height: 1.1; }
     .stat-label { display: block; font-size: 0.76rem; color: var(--ink-mute); margin-top: 4px; }
     .stats-daily { display: flex; flex-direction: column; gap: 6px; }
+    .stats-section { margin-top: 16px; }
+    .stats-subtitle { font-size: 0.78rem; color: var(--ink-mute); letter-spacing: 0.04em; margin-bottom: 10px; text-transform: uppercase; }
+    .stats-monthly { display: flex; flex-direction: column; gap: 6px; }
+    .sm-row { display: grid; grid-template-columns: 72px 1fr auto; align-items: center; gap: 10px; font-size: 0.82rem; color: var(--ink-soft); padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .sm-row:last-child { border-bottom: none; }
+    .sm-month { color: var(--ink); font-variant-numeric: tabular-nums; }
+    .sm-total { color: var(--gold); font-weight: 600; text-align: right; }
+    .sm-avg { color: var(--ink-mute); font-size: 0.76rem; }
+    .stats-toggle { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--ink-soft); font-family: inherit; font-size: 0.8rem; padding: 8px 12px; cursor: pointer; width: 100%; transition: border-color 0.2s var(--ease), color 0.2s var(--ease); }
+    .stats-toggle:hover { border-color: var(--gold); color: var(--gold); }
+    .stats-daily { margin-top: 10px; }
     .sd-row { display: grid; grid-template-columns: 64px 1fr 40px; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--ink-soft); }
     .sd-date { color: var(--ink-mute); }
     .sd-bar-wrap { background: var(--surface); border-radius: 4px; height: 10px; overflow: hidden; }
@@ -384,7 +395,17 @@
             <div class="stat"><span class="stat-num" id="statToday">–</span><span class="stat-label">오늘 순방문</span></div>
             <div class="stat"><span class="stat-num" id="statTotal">–</span><span class="stat-label">누적 순방문</span></div>
           </div>
-          <div class="stats-daily" id="statsDaily"></div>
+
+          <div class="stats-section">
+            <div class="stats-subtitle">월별 요약</div>
+            <div class="stats-monthly" id="statsMonthly"></div>
+          </div>
+
+          <div class="stats-section">
+            <button type="button" class="stats-toggle" id="statsDailyToggle" aria-expanded="false">일별 방문자 보기 ▾</button>
+            <div class="stats-daily" id="statsDaily" hidden></div>
+          </div>
+
           <span class="save-msg" id="statsMsg"></span>
         </div>
 
@@ -675,6 +696,8 @@
       var statToday = document.getElementById("statToday");
       var statTotal = document.getElementById("statTotal");
       var statsDaily = document.getElementById("statsDaily");
+      var statsMonthly = document.getElementById("statsMonthly");
+      var statsDailyToggle = document.getElementById("statsDailyToggle");
       var statsMsg = document.getElementById("statsMsg");
       var statsRefreshBtn = document.getElementById("statsRefreshBtn");
 
@@ -682,63 +705,103 @@
         var d = new Date(), m = d.getMonth() + 1, day = d.getDate();
         return d.getFullYear() + "-" + (m < 10 ? "0" + m : m) + "-" + (day < 10 ? "0" + day : day);
       }
-      function daysAgoStr(n) {
-        var d = new Date(); d.setDate(d.getDate() - n);
-        var m = d.getMonth() + 1, day = d.getDate();
-        return d.getFullYear() + "-" + (m < 10 ? "0" + m : m) + "-" + (day < 10 ? "0" + day : day);
-      }
-      function renderDaily(map) {
+      function daysInMonth(y, m) { return new Date(y, m, 0).getDate(); }   // m: 1~12
+
+      function renderDaily(dailyMap) {
         statsDaily.innerHTML = "";
-        var dates = Object.keys(map).sort().reverse();
+        var dates = Object.keys(dailyMap).sort().reverse();
         if (!dates.length) {
-          var e = document.createElement("div");
-          e.className = "stats-empty"; e.textContent = "아직 방문 기록이 없습니다.";
+          var e = document.createElement("div"); e.className = "stats-empty"; e.textContent = "아직 방문 기록이 없습니다.";
           statsDaily.appendChild(e); return;
         }
         var max = 0, i;
-        for (i = 0; i < dates.length; i++) { if (map[dates[i]] > max) { max = map[dates[i]]; } }
-        for (i = 0; i < dates.length && i < 30; i++) {
-          var dt = dates[i], c = map[dt];
-          var parts = dt.split("-");
+        for (i = 0; i < dates.length; i++) { if (dailyMap[dates[i]] > max) { max = dailyMap[dates[i]]; } }
+        for (i = 0; i < dates.length; i++) {
+          var dt = dates[i], c = dailyMap[dt], parts = dt.split("-");
           var row = document.createElement("div"); row.className = "sd-row";
-          var ds = document.createElement("span"); ds.className = "sd-date";
-          ds.textContent = (parts[1] || "") + "." + (parts[2] || "");
+          var ds = document.createElement("span"); ds.className = "sd-date"; ds.textContent = (parts[1] || "") + "." + (parts[2] || "");
           var wrap = document.createElement("div"); wrap.className = "sd-bar-wrap";
           var bar = document.createElement("div"); bar.className = "sd-bar";
-          bar.style.width = (max > 0 ? Math.round(c / max * 100) : 0) + "%";
-          wrap.appendChild(bar);
+          bar.style.width = (max > 0 ? Math.round(c / max * 100) : 0) + "%"; wrap.appendChild(bar);
           var cnt = document.createElement("span"); cnt.className = "sd-count"; cnt.textContent = String(c);
           row.appendChild(ds); row.appendChild(wrap); row.appendChild(cnt);
           statsDaily.appendChild(row);
         }
       }
+
+      function renderMonthly(monthlyMap) {
+        statsMonthly.innerHTML = "";
+        var months = Object.keys(monthlyMap).sort().reverse();
+        if (!months.length) {
+          var e = document.createElement("div"); e.className = "stats-empty"; e.textContent = "아직 방문 기록이 없습니다.";
+          statsMonthly.appendChild(e); return;
+        }
+        var now = new Date();
+        var cm = now.getMonth() + 1;
+        var curYM = now.getFullYear() + "-" + (cm < 10 ? "0" + cm : cm);
+        for (var i = 0; i < months.length; i++) {
+          var ym = months[i], total = monthlyMap[ym], p = ym.split("-");
+          var y = parseInt(p[0], 10), mo = parseInt(p[1], 10);
+          var denom = (ym === curYM) ? now.getDate() : daysInMonth(y, mo);
+          if (denom < 1) { denom = 1; }
+          var avg = Math.round(total / denom * 10) / 10;
+          var row = document.createElement("div"); row.className = "sm-row";
+          var ml = document.createElement("span"); ml.className = "sm-month"; ml.textContent = p[0] + "." + p[1];
+          var av = document.createElement("span"); av.className = "sm-avg"; av.textContent = "일평균 " + avg + "명";
+          var tt = document.createElement("span"); tt.className = "sm-total"; tt.textContent = total.toLocaleString() + "명";
+          row.appendChild(ml); row.appendChild(av); row.appendChild(tt);
+          statsMonthly.appendChild(row);
+        }
+      }
+
+      function aggregateVisits(rows) {
+        var dailyMap = {}, monthlyMap = {}, i;
+        for (i = 0; i < rows.length; i++) {
+          var d = rows[i].visit_date; if (!d) { continue; }
+          dailyMap[d] = (dailyMap[d] || 0) + 1;
+          var ym = String(d).slice(0, 7);
+          monthlyMap[ym] = (monthlyMap[ym] || 0) + 1;
+        }
+        if (statTotal) { statTotal.textContent = rows.length.toLocaleString(); }
+        if (statToday) { statToday.textContent = (dailyMap[localDateStr()] || 0).toLocaleString(); }
+        renderMonthly(monthlyMap);
+        renderDaily(dailyMap);
+      }
+
       function loadStats() {
         if (!statsMsg) { return; }
         statsMsg.className = "save-msg"; statsMsg.textContent = "불러오는 중…";
-        // 누적 순방문 (전체 행 수)
-        sb.from("visits").select("id", { count: "exact", head: true }).then(function (r) {
-          if (!r.error && statTotal) { statTotal.textContent = (r.count == null ? 0 : r.count).toLocaleString(); }
-        });
-        // 최근 30일 일별 집계
-        sb.from("visits").select("visit_date").gte("visit_date", daysAgoStr(29)).then(function (r) {
-          if (r.error) {
-            statsMsg.className = "save-msg err";
-            statsMsg.textContent = "통계를 불러오지 못했습니다. (schema_stats.sql 적용 여부를 확인하세요)";
-            if (statToday) { statToday.textContent = "–"; }
-            if (statTotal) { statTotal.textContent = "–"; }
-            return;
-          }
-          var rows = r.data || [], map = {}, i;
-          for (i = 0; i < rows.length; i++) {
-            var d = rows[i].visit_date;
-            if (d) { map[d] = (map[d] || 0) + 1; }
-          }
-          if (statToday) { statToday.textContent = (map[localDateStr()] || 0).toLocaleString(); }
-          renderDaily(map);
-          statsMsg.className = "save-msg"; statsMsg.textContent = "";
+        var all = [], pageSize = 1000;
+        function fetchPage(from) {
+          sb.from("visits").select("visit_date").order("visit_date", { ascending: true }).range(from, from + pageSize - 1).then(function (r) {
+            if (r.error) {
+              statsMsg.className = "save-msg err";
+              statsMsg.textContent = "통계를 불러오지 못했습니다. (schema_stats.sql 적용 여부를 확인하세요)";
+              if (statToday) { statToday.textContent = "–"; }
+              if (statTotal) { statTotal.textContent = "–"; }
+              return;
+            }
+            var rows = r.data || [];
+            all = all.concat(rows);
+            if (rows.length === pageSize) { fetchPage(from + pageSize); }   // 다음 페이지가 더 있음
+            else {
+              aggregateVisits(all);
+              statsMsg.className = "save-msg"; statsMsg.textContent = "";
+            }
+          });
+        }
+        fetchPage(0);
+      }
+
+      if (statsRefreshBtn) { statsRefreshBtn.addEventListener("click", function () { loadStats(); }); }
+      if (statsDailyToggle && statsDaily) {
+        statsDailyToggle.addEventListener("click", function () {
+          var open = statsDaily.hidden;   // 현재 숨겨져 있으면 펼친다
+          statsDaily.hidden = !open;
+          statsDailyToggle.setAttribute("aria-expanded", open ? "true" : "false");
+          statsDailyToggle.textContent = open ? "일별 방문자 숨기기 ▴" : "일별 방문자 보기 ▾";
         });
       }
-      if (statsRefreshBtn) { statsRefreshBtn.addEventListener("click", function () { loadStats(); }); }
 
       function loadProfile() {
         profileMsg.className = "save-msg";
