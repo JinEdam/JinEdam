@@ -1017,7 +1017,32 @@
       }
 
       /* ----- 로드 ----- */
+      /* ----- 방문 기록 (하루 1회 / 브라우저 기준 순방문) ----- */
+      function localDateStr() {
+        var d = new Date();
+        var m = d.getMonth() + 1, day = d.getDate();
+        return d.getFullYear() + "-" + (m < 10 ? "0" + m : m) + "-" + (day < 10 ? "0" + day : day);
+      }
+      function recordVisit() {
+        if (!sb) { return; }
+        var today = localDateStr();
+        var vid = null, last = null;
+        try {
+          vid = localStorage.getItem("jv_vid");
+          if (!vid) {
+            vid = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (String(Date.now()) + Math.random().toString(36).slice(2));
+            localStorage.setItem("jv_vid", vid);
+          }
+          last = localStorage.getItem("jv_last");
+        } catch (e) { /* localStorage 불가 환경 */ }
+        if (last === today) { return; }   // 오늘 이미 집계됨
+        sb.from("visits").insert({ visit_date: today, visitor_id: vid }).then(function (r) {
+          if (!r.error) { try { localStorage.setItem("jv_last", today); } catch (e) {} }
+        });
+      }
+
       if (sb) {
+        recordVisit();
         sb.from("profile").select("*").eq("id", 1).maybeSingle().then(function (r) { if (!r.error) { renderProfile(r.data); } });
         sb.from("works").select("*").then(function (r) { if (!r.error) { renderWorks(r.data || []); } });
         sb.from("photos").select("*").then(function (r) { if (!r.error) { renderPhotos(r.data || []); } });
