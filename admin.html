@@ -268,7 +268,22 @@
     .video-item .vi-sub { color: var(--ink-mute); font-size: 0.84rem; margin-top: 2px; }
     .video-item .vi-actions { display: flex; gap: 8px; flex: 0 0 auto; }
 
-    /* ===================== 소식 ===================== */
+    /* ===================== 방문자 통계 ===================== */
+    .stats-box { border: 1px solid var(--border); border-radius: 8px; padding: 16px 18px; margin-bottom: 26px; background: var(--bg-2); }
+    .stats-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .stats-title { font-size: 0.9rem; color: var(--ink-soft); letter-spacing: 0.02em; }
+    .btn-mini { padding: 5px 10px; font-size: 0.74rem; }
+    .stats-row { display: flex; gap: 12px; margin-bottom: 14px; }
+    .stat { flex: 1 1 0; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; background: var(--surface); }
+    .stat-num { display: block; font-size: 1.7rem; font-weight: 600; color: var(--gold); line-height: 1.1; }
+    .stat-label { display: block; font-size: 0.76rem; color: var(--ink-mute); margin-top: 4px; }
+    .stats-daily { display: flex; flex-direction: column; gap: 6px; }
+    .sd-row { display: grid; grid-template-columns: 64px 1fr 40px; align-items: center; gap: 10px; font-size: 0.8rem; color: var(--ink-soft); }
+    .sd-date { color: var(--ink-mute); }
+    .sd-bar-wrap { background: var(--surface); border-radius: 4px; height: 10px; overflow: hidden; }
+    .sd-bar { height: 100%; background: var(--gold); opacity: 0.7; border-radius: 4px; }
+    .sd-count { text-align: right; }
+    .stats-empty { font-size: 0.82rem; color: var(--ink-mute); }
     .panel .field input[type="file"] { background: transparent; border: none; padding: 0; color: var(--ink-soft); font-size: 0.86rem; }
     .panel .field input[type="file"]::file-selector-button {
       background: var(--surface-2); color: var(--ink); border: 1px solid var(--border); border-radius: 5px;
@@ -359,6 +374,19 @@
       <section class="panel active" id="panel-profile">
         <h2>프로필 · 기본정보</h2>
         <p class="lead">첫 화면에 보이는 이름·기본정보·연락처를 편집합니다. 저장하면 데이터베이스에 바로 반영됩니다.</p>
+
+        <div class="stats-box" id="statsBox">
+          <div class="stats-head">
+            <span class="stats-title">방문자 통계</span>
+            <button type="button" class="btn-ghost btn-mini" id="statsRefreshBtn">새로고침</button>
+          </div>
+          <div class="stats-row">
+            <div class="stat"><span class="stat-num" id="statToday">–</span><span class="stat-label">오늘 순방문</span></div>
+            <div class="stat"><span class="stat-num" id="statTotal">–</span><span class="stat-label">누적 순방문</span></div>
+          </div>
+          <div class="stats-daily" id="statsDaily"></div>
+          <span class="save-msg" id="statsMsg"></span>
+        </div>
 
         <form id="profileForm">
           <fieldset class="form-group">
@@ -633,6 +661,7 @@
         if (!appShown) {
           appShown = true;
           loadProfile();
+          loadStats();
         }
       }
 
@@ -641,6 +670,75 @@
       function setDocTitle(name) {
         document.title = (name ? (name + " · ") : "") + "프로필 수정 페이지";
       }
+
+      /* ---- 방문자 통계 ---- */
+      var statToday = document.getElementById("statToday");
+      var statTotal = document.getElementById("statTotal");
+      var statsDaily = document.getElementById("statsDaily");
+      var statsMsg = document.getElementById("statsMsg");
+      var statsRefreshBtn = document.getElementById("statsRefreshBtn");
+
+      function localDateStr() {
+        var d = new Date(), m = d.getMonth() + 1, day = d.getDate();
+        return d.getFullYear() + "-" + (m < 10 ? "0" + m : m) + "-" + (day < 10 ? "0" + day : day);
+      }
+      function daysAgoStr(n) {
+        var d = new Date(); d.setDate(d.getDate() - n);
+        var m = d.getMonth() + 1, day = d.getDate();
+        return d.getFullYear() + "-" + (m < 10 ? "0" + m : m) + "-" + (day < 10 ? "0" + day : day);
+      }
+      function renderDaily(map) {
+        statsDaily.innerHTML = "";
+        var dates = Object.keys(map).sort().reverse();
+        if (!dates.length) {
+          var e = document.createElement("div");
+          e.className = "stats-empty"; e.textContent = "아직 방문 기록이 없습니다.";
+          statsDaily.appendChild(e); return;
+        }
+        var max = 0, i;
+        for (i = 0; i < dates.length; i++) { if (map[dates[i]] > max) { max = map[dates[i]]; } }
+        for (i = 0; i < dates.length && i < 30; i++) {
+          var dt = dates[i], c = map[dt];
+          var parts = dt.split("-");
+          var row = document.createElement("div"); row.className = "sd-row";
+          var ds = document.createElement("span"); ds.className = "sd-date";
+          ds.textContent = (parts[1] || "") + "." + (parts[2] || "");
+          var wrap = document.createElement("div"); wrap.className = "sd-bar-wrap";
+          var bar = document.createElement("div"); bar.className = "sd-bar";
+          bar.style.width = (max > 0 ? Math.round(c / max * 100) : 0) + "%";
+          wrap.appendChild(bar);
+          var cnt = document.createElement("span"); cnt.className = "sd-count"; cnt.textContent = String(c);
+          row.appendChild(ds); row.appendChild(wrap); row.appendChild(cnt);
+          statsDaily.appendChild(row);
+        }
+      }
+      function loadStats() {
+        if (!statsMsg) { return; }
+        statsMsg.className = "save-msg"; statsMsg.textContent = "불러오는 중…";
+        // 누적 순방문 (전체 행 수)
+        sb.from("visits").select("id", { count: "exact", head: true }).then(function (r) {
+          if (!r.error && statTotal) { statTotal.textContent = (r.count == null ? 0 : r.count).toLocaleString(); }
+        });
+        // 최근 30일 일별 집계
+        sb.from("visits").select("visit_date").gte("visit_date", daysAgoStr(29)).then(function (r) {
+          if (r.error) {
+            statsMsg.className = "save-msg err";
+            statsMsg.textContent = "통계를 불러오지 못했습니다. (schema_stats.sql 적용 여부를 확인하세요)";
+            if (statToday) { statToday.textContent = "–"; }
+            if (statTotal) { statTotal.textContent = "–"; }
+            return;
+          }
+          var rows = r.data || [], map = {}, i;
+          for (i = 0; i < rows.length; i++) {
+            var d = rows[i].visit_date;
+            if (d) { map[d] = (map[d] || 0) + 1; }
+          }
+          if (statToday) { statToday.textContent = (map[localDateStr()] || 0).toLocaleString(); }
+          renderDaily(map);
+          statsMsg.className = "save-msg"; statsMsg.textContent = "";
+        });
+      }
+      if (statsRefreshBtn) { statsRefreshBtn.addEventListener("click", function () { loadStats(); }); }
 
       function loadProfile() {
         profileMsg.className = "save-msg";
